@@ -283,13 +283,10 @@ header {
   min-width: 38px;
   padding: 0 !important;
   border-radius: 50% !important;
-  font-size: 1.4rem;
-  font-weight: 500;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
   color: #ffffff !important;
-  line-height: 1;
 }
 
 .dropdown-menu {
