@@ -169,82 +169,143 @@ header {
   transform: translateY(-2px);
 }
 
-/* Glassmorphic Grid & Cards */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
-}
-
-.card {
+/* Watchlist List & Stock Rows */
+.watchlist-list {
+  display: flex;
+  flex-direction: column;
   background: var(--card-bg);
   backdrop-filter: var(--backdrop-blur);
   -webkit-backdrop-filter: var(--backdrop-blur);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 1.15rem;
-  box-shadow: var(--card-shadow);
-  transition: var(--transition-smooth);
-  position: relative;
   overflow: hidden;
+  box-shadow: var(--card-shadow);
 }
 
-.card:hover {
-  background: var(--card-hover-bg);
-  border-color: var(--border-hover-color);
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+.stock-row {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border-color);
+  transition: var(--transition-smooth);
 }
 
-/* Card Header styles */
-.card-header {
+.stock-row:last-child {
+  border-bottom: none;
+}
+
+.stock-row:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.stock-row-main {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  user-select: none;
 }
 
-.stock-info .sym {
-  font-size: 1.25rem;
+.stock-row-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1.2;
+  min-width: 0;
+}
+
+.stock-row-left .sym-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stock-row-left .sym {
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-main);
   letter-spacing: 0.5px;
 }
 
 .exchange-badge {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  display: inline-block;
 }
 
-.stock-info .name {
-  font-size: 0.85rem;
+.stock-row-left .name {
+  font-size: 0.8rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
+  max-width: 90%;
 }
 
-/* Badge values */
-.price-badge {
-  text-align: right;
+.stock-row-left .buy-info {
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  font-weight: 500;
 }
 
-.price-val {
-  font-size: 1.3rem;
-  font-weight: 700;
+.stock-row-middle {
+  display: flex;
+  align-items: center;
+  flex: 1.5;
+  padding: 0 1rem;
+}
+
+.stock-row-middle .target-info {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.target-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
-.change-val {
+.target-tag.hit {
+  background: var(--gain-bg);
+  color: var(--gain);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.target-tag.sl-hit {
+  background: var(--loss-bg);
+  color: var(--loss);
+  border-color: rgba(244, 63, 94, 0.2);
+}
+
+.stock-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex: 0.8;
+}
+
+.stock-row-right .price {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-row-right .returns {
   font-size: 0.8rem;
   font-weight: 600;
   display: inline-flex;
@@ -252,72 +313,42 @@ header {
   gap: 2px;
   padding: 2px 8px;
   border-radius: 6px;
-  margin-top: 2px;
 }
 
-.change-val.up {
+.stock-row-right .returns.up {
   color: var(--gain);
   background: var(--gain-bg);
 }
 
-.change-val.down {
+.stock-row-right .returns.down {
   color: var(--loss);
   background: var(--loss-bg);
 }
 
-/* Targets and Stats grid inside Card */
-.card-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin: 0.75rem 0;
-  padding: 0.75rem 0;
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.stat-box {
+/* Expanded Actions and Targets Drawer */
+.stock-row-expanded {
+  background: rgba(0, 0, 0, 0.15);
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
   display: flex;
-  flex-direction: column;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 2px;
-}
-
-.stat-value {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-main);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Alert styles */
-.target-alert {
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  display: flex;
+  justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.expanded-alerts {
+  display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
-.target-alert.target-hit {
-  background: var(--gain-bg);
-  color: var(--gain);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-}
-
-.target-alert.stop-loss-hit {
-  background: var(--loss-bg);
-  color: var(--loss);
-  border: 1px solid rgba(244, 63, 94, 0.2);
+.expanded-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 /* Modals / Forms */
@@ -545,24 +576,30 @@ header {
   .stat-icon {
     display: none;
   }
-  .grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+  .stock-row-middle {
+    display: none;
   }
-  .card {
-    padding: 0.85rem;
-    border-radius: var(--radius-md);
+  .stock-row-main {
+    padding: 0.8rem 1rem;
   }
-  .card-stats {
-    margin: 0.5rem 0;
-    padding: 0.5rem 0;
-    gap: 0.4rem;
+  .stock-row-left .sym {
+    font-size: 1.05rem;
   }
-  .stat-label {
-    font-size: 0.65rem;
+  .stock-row-right .price {
+    font-size: 1.05rem;
   }
-  .stat-value {
-    font-size: 0.85rem;
+  .stock-row-expanded {
+    padding: 0.6rem 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .expanded-alerts {
+    justify-content: flex-start;
+  }
+  .expanded-actions {
+    margin-left: 0;
+    justify-content: flex-end;
   }
   .modal {
     padding: 1.5rem;

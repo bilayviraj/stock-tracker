@@ -19,6 +19,7 @@ export default function App() {
   const [editTarget1, setEditTarget1] = useState('');
   const [editTarget2, setEditTarget2] = useState('');
   const [editStopLoss, setEditStopLoss] = useState('');
+  const [expandedSymbol, setExpandedSymbol] = useState(null);
 
   const fetchPricesForList = async (list) => {
     if (!list || list.length === 0) return;
@@ -379,14 +380,14 @@ export default function App() {
         </div>
       </section>
 
-      {/* Grid of stock cards */}
+      {/* List of stock rows */}
       {watchlist.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
           <h3 style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Your watchlist is empty</h3>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>Add your first stock</button>
         </div>
       ) : (
-        <div className="grid">
+        <div className="watchlist-list">
           {watchlist.map((stock) => {
             const pctChangeFromBuy = (stock.buyPrice && stock.currentPrice)
               ? ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) * 100
@@ -395,85 +396,74 @@ export default function App() {
             const isTarget1Hit = stock.target1 && stock.currentPrice >= stock.target1;
             const isTarget2Hit = stock.target2 && stock.currentPrice >= stock.target2;
             const isStopLossHit = stock.stopLoss && stock.currentPrice <= stock.stopLoss;
+            const isExpanded = expandedSymbol === stock.symbol;
 
             return (
-              <div className="card" key={stock.symbol}>
-                <div className="card-header">
-                  <div className="stock-info">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div className="stock-row" key={stock.symbol}>
+                <div className="stock-row-main" onClick={() => setExpandedSymbol(isExpanded ? null : stock.symbol)}>
+                  <div className="stock-row-left">
+                    <div className="sym-container">
                       <span className="sym">{stock.symbol.split('.')[0]}</span>
                       <span className="exchange-badge">{stock.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}</span>
                     </div>
                     <div className="name" title={stock.name}>{stock.name}</div>
+                    {stock.buyPrice && (
+                      <div className="buy-info">Avg: ₹{stock.buyPrice.toFixed(2)}</div>
+                    )}
                   </div>
-                  <div className="price-badge">
-                    <div className="price-val">₹{stock.currentPrice?.toFixed(2) || 'N/A'}</div>
+
+                  <div className="stock-row-middle">
+                    <div className="target-info">
+                      <span className={`target-tag ${isTarget1Hit ? 'hit' : ''}`}>
+                        T1: {stock.target1 ? `₹${stock.target1.toFixed(2)}` : '—'}
+                      </span>
+                      <span className={`target-tag ${isTarget2Hit ? 'hit' : ''}`}>
+                        T2: {stock.target2 ? `₹${stock.target2.toFixed(2)}` : '—'}
+                      </span>
+                      <span className={`target-tag ${isStopLossHit ? 'sl-hit' : ''}`}>
+                        SL: {stock.stopLoss ? `₹${stock.stopLoss.toFixed(2)}` : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="stock-row-right">
+                    <span className="price">₹{stock.currentPrice?.toFixed(2) || 'N/A'}</span>
                     {stock.changePercent !== undefined && (
-                      <div className={`change-val ${stock.change >= 0 ? 'up' : 'down'}`}>
+                      <span className={`returns ${stock.change >= 0 ? 'up' : 'down'}`}>
                         {stock.change >= 0 ? '▲' : '▼'} {Math.abs(stock.changePercent).toFixed(2)}%
-                      </div>
+                      </span>
                     )}
                   </div>
                 </div>
 
-                {/* Target alerts */}
-                {isTarget2Hit && (
-                  <div className="target-alert target-hit">
-                    🎉 Target 2 Hit! (₹{stock.target2})
+                {isExpanded && (
+                  <div className="stock-row-expanded">
+                    <div className="expanded-alerts">
+                      <span className={`target-tag ${isTarget1Hit ? 'hit' : ''}`}>
+                        T1: {stock.target1 ? `₹${stock.target1.toFixed(2)}` : '—'}
+                      </span>
+                      <span className={`target-tag ${isTarget2Hit ? 'hit' : ''}`}>
+                        T2: {stock.target2 ? `₹${stock.target2.toFixed(2)}` : '—'}
+                      </span>
+                      <span className={`target-tag ${isStopLossHit ? 'sl-hit' : ''}`}>
+                        SL: {stock.stopLoss ? `₹${stock.stopLoss.toFixed(2)}` : '—'}
+                      </span>
+                      {pctChangeFromBuy !== null && (
+                        <span className={`returns ${pctChangeFromBuy >= 0 ? 'up' : 'down'}`} style={{ marginLeft: '0.5rem', alignSelf: 'center', fontWeight: 'bold' }}>
+                          P&L: {pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="expanded-actions">
+                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleEditClick(stock)}>
+                        Edit
+                      </button>
+                      <button className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleRemoveStock(stock.symbol)}>
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 )}
-                {isTarget1Hit && !isTarget2Hit && (
-                  <div className="target-alert target-hit">
-                    🎉 Target 1 Hit! (₹{stock.target1})
-                  </div>
-                )}
-                {isStopLossHit && (
-                  <div className="target-alert stop-loss-hit">
-                    ⚠️ Stop Loss Triggered! (₹{stock.stopLoss})
-                  </div>
-                )}
-
-                <div className="card-stats">
-                  <div className="stat-box">
-                    <span className="stat-label">Buy Price</span>
-                    <span className="stat-value">
-                      {stock.buyPrice ? `₹${stock.buyPrice.toFixed(2)}` : '—'}
-                    </span>
-                  </div>
-                  <div className="stat-box">
-                    <span className="stat-label">Returns</span>
-                    <span className={`stat-value ${pctChangeFromBuy >= 0 ? 'up' : pctChangeFromBuy < 0 ? 'down' : ''}`} style={{ color: pctChangeFromBuy >= 0 ? 'var(--gain)' : pctChangeFromBuy < 0 ? 'var(--loss)' : 'var(--text-main)' }}>
-                      {pctChangeFromBuy !== null ? `${pctChangeFromBuy >= 0 ? '+' : ''}${pctChangeFromBuy.toFixed(2)}%` : '—'}
-                    </span>
-                  </div>
-                  <div className="stat-box">
-                    <span className="stat-label">Target 1</span>
-                    <span className="stat-value" style={{ color: isTarget1Hit ? 'var(--gain)' : 'inherit' }}>
-                      {stock.target1 ? `₹${stock.target1.toFixed(2)}` : '—'}
-                    </span>
-                  </div>
-                  <div className="stat-box">
-                    <span className="stat-label">Target 2</span>
-                    <span className="stat-value" style={{ color: isTarget2Hit ? 'var(--gain)' : 'inherit' }}>
-                      {stock.target2 ? `₹${stock.target2.toFixed(2)}` : '—'}
-                    </span>
-                  </div>
-                  <div className="stat-box" style={{ gridColumn: 'span 2' }}>
-                    <span className="stat-label">Stop Loss</span>
-                    <span className="stat-value" style={{ color: isStopLossHit ? 'var(--loss)' : 'inherit' }}>
-                      {stock.stopLoss ? `₹${stock.stopLoss.toFixed(2)}` : '—'}
-                    </span>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                  <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleEditClick(stock)}>
-                    Edit
-                  </button>
-                  <button className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleRemoveStock(stock.symbol)}>
-                    Delete
-                  </button>
-                </div>
               </div>
             );
           })}
