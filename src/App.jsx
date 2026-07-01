@@ -336,7 +336,25 @@ export default function App() {
     <div className="container">
       <header>
         <div className="logo-section">
-          <h1><span>📈</span> <span className="title-text">Stock Tracker</span></h1>
+          <h1 style={{ display: 'flex', alignItems: 'center' }}>
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '8px', flexShrink: 0 }}>
+              <defs>
+                <linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#6366f1" />
+                  <stop offset="1" stopColor="#4f46e5" />
+                </linearGradient>
+                <linearGradient id="glow-grad" x1="0" y1="32" x2="32" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#10b981" />
+                  <stop offset="1" stopColor="#3b82f6" />
+                </linearGradient>
+              </defs>
+              <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#logo-grad)" fillOpacity="0.15" stroke="url(#logo-grad)" strokeWidth="1.5"/>
+              <path d="M8 22L14 16L18 20L24 12" stroke="url(#glow-grad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M19 12H24V17" stroke="url(#glow-grad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="24" cy="12" r="2" fill="#10b981"/>
+            </svg>
+            <span className="title-text">TradeWatcher</span>
+          </h1>
           <p>Real-time stock watchlist with target & stop-loss alerts</p>
         </div>
         <div className="header-actions">
