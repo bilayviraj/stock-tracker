@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -13,10 +13,15 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Check Vercel KV credentials
+// Check Upstash credentials and initialize client
 if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-  console.warn("WARNING: Vercel KV environment variables (KV_REST_API_URL / KV_REST_API_TOKEN) are not defined!");
+  console.warn("WARNING: KV_REST_API_URL or KV_REST_API_TOKEN is not defined!");
 }
+
+const kv = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+});
 
 
 // Helper function to fetch stock data from Yahoo Finance chart API
