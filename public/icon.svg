@@ -13,9 +13,11 @@
       <stop offset="1" stop-color="#3b82f6"/>
     </linearGradient>
   </defs>
-  <circle cx="256" cy="256" r="240" fill="url(#bg-grad)" stroke="url(#logo-grad)" stroke-width="12"/>
-  <rect x="96" y="96" width="320" height="320" rx="64" fill="url(#logo-grad)" fill-opacity="0.1" stroke="url(#logo-grad)" stroke-width="8"/>
-  <path d="M160 330L230 260L280 300L352 190" stroke="url(#glow-grad)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M288 190H352V254" stroke="url(#glow-grad)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="352" cy="190" r="22" fill="#10b981"/>
+  <rect width="512" height="512" fill="url(#bg-grad)"/>
+  <g transform="translate(106, 106)">
+    <rect x="0" y="0" width="300" height="300" rx="72" fill="url(#logo-grad)" fill-opacity="0.1" stroke="url(#logo-grad)" stroke-width="8"/>
+    <path d="M60 220L125 155L170 195L240 90" stroke="url(#glow-grad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M185 90H240V145" stroke="url(#glow-grad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="240" cy="90" r="18" fill="#10b981"/>
+  </g>
 </svg>
