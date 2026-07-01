@@ -207,6 +207,19 @@ header {
   letter-spacing: 0.5px;
 }
 
+.exchange-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
 .stock-info .name {
   font-size: 0.85rem;
   color: var(--text-muted);

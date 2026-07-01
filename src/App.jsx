@@ -16,6 +16,12 @@ export default function App() {
   const [stopLoss, setStopLoss] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedStockPrice, setSelectedStockPrice] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingStock, setEditingStock] = useState(null);
+  const [editBuyPrice, setEditBuyPrice] = useState('');
+  const [editTarget1, setEditTarget1] = useState('');
+  const [editTarget2, setEditTarget2] = useState('');
+  const [editStopLoss, setEditStopLoss] = useState('');
 
   // Auto refresh interval setup
   useEffect(() => {
@@ -125,6 +131,33 @@ export default function App() {
 
   const handleRemoveStock = (symbol) => {
     setWatchlist(prev => prev.filter(item => item.symbol !== symbol));
+  };
+
+  const handleEditClick = (stock) => {
+    setEditingStock(stock);
+    setEditBuyPrice(stock.buyPrice !== null && stock.buyPrice !== undefined ? stock.buyPrice.toString() : '');
+    setEditTarget1(stock.target1 !== null && stock.target1 !== undefined ? stock.target1.toString() : '');
+    setEditTarget2(stock.target2 !== null && stock.target2 !== undefined ? stock.target2.toString() : '');
+    setEditStopLoss(stock.stopLoss !== null && stock.stopLoss !== undefined ? stock.stopLoss.toString() : '');
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = (e) => {
+    e.preventDefault();
+    setWatchlist(prev => prev.map(item => {
+      if (item.symbol.toUpperCase() === editingStock.symbol.toUpperCase()) {
+        return {
+          ...item,
+          buyPrice: editBuyPrice ? parseFloat(editBuyPrice) : null,
+          target1: editTarget1 ? parseFloat(editTarget1) : null,
+          target2: editTarget2 ? parseFloat(editTarget2) : null,
+          stopLoss: editStopLoss ? parseFloat(editStopLoss) : null
+        };
+      }
+      return item;
+    }));
+    setShowEditModal(false);
+    setEditingStock(null);
   };
 
   // Stats calculation
@@ -294,7 +327,10 @@ export default function App() {
               <div className="card" key={stock.symbol}>
                 <div className="card-header">
                   <div className="stock-info">
-                    <div className="sym">{stock.symbol}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className="sym">{stock.symbol.split('.')[0]}</span>
+                      <span className="exchange-badge">{stock.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}</span>
+                    </div>
                     <div className="name" title={stock.name}>{stock.name}</div>
                   </div>
                   <div className="price-badge">
@@ -358,6 +394,9 @@ export default function App() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleEditClick(stock)}>
+                    Edit
+                  </button>
                   <button className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleRemoveStock(stock.symbol)}>
                     Delete
                   </button>
@@ -492,6 +531,87 @@ export default function App() {
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={loading}>
                   {loading ? 'Adding...' : 'Add Stock'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Stock Modal */}
+      {showEditModal && editingStock && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2 className="modal-title">Edit Stock: {editingStock.symbol}</h2>
+            <form onSubmit={handleSaveEdit}>
+              <div className="form-group">
+                <label>Symbol / Ticker</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editingStock.symbol}
+                  disabled
+                />
+                {editingStock.currentPrice !== null && editingStock.currentPrice !== undefined && (
+                  <div style={{ marginTop: '8px', color: 'var(--gain)', fontSize: '0.85rem', fontWeight: 600 }}>
+                    💡 Current Price: ₹{editingStock.currentPrice.toFixed(2)}
+                  </div>
+                )}
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-dark)', marginTop: '4px', display: 'block' }}>
+                  Symbol/Ticker cannot be modified.
+                </span>
+              </div>
+              <div className="form-group">
+                <label>Buy Price (₹)</label>
+                <input
+                  type="number"
+                  step="any"
+                  className="form-control"
+                  placeholder="Purchase price per share"
+                  value={editBuyPrice}
+                  onChange={(e) => setEditBuyPrice(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Target 1 (₹)</label>
+                <input
+                  type="number"
+                  step="any"
+                  className="form-control"
+                  placeholder="First profit target"
+                  value={editTarget1}
+                  onChange={(e) => setEditTarget1(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Target 2 (₹)</label>
+                <input
+                  type="number"
+                  step="any"
+                  className="form-control"
+                  placeholder="Second profit target"
+                  value={editTarget2}
+                  onChange={(e) => setEditTarget2(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Stop Loss (₹)</label>
+                <input
+                  type="number"
+                  step="any"
+                  className="form-control"
+                  placeholder="Loss limit price"
+                  value={editStopLoss}
+                  onChange={(e) => setEditStopLoss(e.target.value)}
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => { setShowEditModal(false); setEditingStock(null); }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Save Changes
                 </button>
               </div>
             </form>
