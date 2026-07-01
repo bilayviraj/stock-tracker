@@ -20,6 +20,7 @@ export default function App() {
   const [editTarget2, setEditTarget2] = useState('');
   const [editStopLoss, setEditStopLoss] = useState('');
   const [expandedSymbol, setExpandedSymbol] = useState(null);
+  const [showMenu, setShowMenu] = useState(false);
 
   const fetchPricesForList = async (list) => {
     if (!list || list.length === 0) return;
@@ -338,7 +339,7 @@ export default function App() {
           <h1><span>📈</span> <span className="title-text">Stock Tracker</span></h1>
           <p>Real-time stock watchlist with target & stop-loss alerts</p>
         </div>
-        <div className="header-actions">
+        <div className="header-actions desktop-actions">
           <button className="btn btn-secondary" onClick={refreshPrices} disabled={loading}>
             {loading ? 'Refreshing...' : '🔄 Refresh'}
           </button>
@@ -352,6 +353,31 @@ export default function App() {
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
             ➕ Add Stock
           </button>
+        </div>
+
+        <div className="header-actions mobile-actions">
+          <button className="btn btn-icon btn-primary" onClick={() => setShowAddModal(true)} title="Add Stock">
+            ➕
+          </button>
+          <div className="menu-container" style={{ position: 'relative' }}>
+            <button className="btn btn-icon btn-secondary" onClick={() => setShowMenu(!showMenu)} title="Menu">
+              ⋮
+            </button>
+            {showMenu && (
+              <div className="dropdown-menu">
+                <button className="dropdown-item" onClick={() => { setShowMenu(false); refreshPrices(); }} disabled={loading}>
+                  🔄 Refresh
+                </button>
+                <button className="dropdown-item" onClick={() => { setShowMenu(false); exportWatchlist(); }}>
+                  📤 Export
+                </button>
+                <label className="dropdown-item" style={{ cursor: 'pointer' }}>
+                  📥 Import
+                  <input type="file" accept=".json" onChange={(e) => { setShowMenu(false); importWatchlist(e); }} style={{ display: 'none' }} />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -409,14 +435,11 @@ export default function App() {
                     <div className="name" title={stock.name}>{stock.name}</div>
                     {stock.buyPrice && (
                       <div className="buy-info">
-                        Buy: ₹{stock.buyPrice.toFixed(2)}
+                        <span className="buy-val">Buy: ₹{stock.buyPrice.toFixed(2)}</span>
                         {pctChangeFromBuy !== null && (
-                          <>
-                            <span style={{ margin: '0 0.5rem', opacity: 0.3 }}>|</span>
-                            <span style={{ color: pctChangeFromBuy >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
-                              P&L: {pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}%
-                            </span>
-                          </>
+                          <span className="pnl-val">
+                            P&L: <span style={{ color: pctChangeFromBuy >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>{pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}%</span>
+                          </span>
                         )}
                       </div>
                     )}
