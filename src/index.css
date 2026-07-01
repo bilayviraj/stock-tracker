@@ -252,6 +252,7 @@ header {
   font-size: 0.75rem;
   color: var(--text-dark);
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .stock-row-middle {
@@ -576,23 +577,27 @@ header {
   .stat-icon {
     display: none;
   }
+  .stock-row-left {
+    flex: 1.6;
+  }
   .stock-row-middle {
     display: flex;
-    padding: 0 0.5rem;
-    flex: 1.2;
+    padding: 0 0.25rem;
+    flex: 1;
+    justify-content: center;
   }
   .target-tag {
     font-size: 0.65rem;
-    padding: 2px 5px;
+    padding: 2px 4px;
   }
   .stock-row-main {
-    padding: 0.8rem 0.75rem;
+    padding: 0.8rem 0.5rem;
   }
   .stock-row-left .sym {
     font-size: 1.05rem;
   }
   .stock-row-right {
-    flex: 0.7;
+    flex: 0.8;
   }
   .stock-row-right .price {
     font-size: 1.05rem;
@@ -604,10 +609,28 @@ header {
     align-items: center;
   }
   .modal {
-    padding: 1.5rem;
+    padding: 1.15rem 1.25rem;
     width: 95%;
-    max-height: 90vh;
+    max-height: 92vh;
     overflow-y: auto;
+  }
+  .modal-title {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  .form-group {
+    margin-bottom: 0.75rem;
+  }
+  .form-group label {
+    font-size: 0.7rem;
+    margin-bottom: 0.25rem;
+  }
+  .form-control {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+  .modal-actions {
+    margin-top: 1.25rem;
   }
   .suggestions-list {
     max-height: 180px;

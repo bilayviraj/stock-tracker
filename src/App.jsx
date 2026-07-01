@@ -409,7 +409,7 @@ export default function App() {
                     <div className="name" title={stock.name}>{stock.name}</div>
                     {stock.buyPrice && (
                       <div className="buy-info">
-                        Avg: ₹{stock.buyPrice.toFixed(2)}
+                        Buy: ₹{stock.buyPrice.toFixed(2)}
                         {pctChangeFromBuy !== null && (
                           <>
                             <span style={{ margin: '0 0.5rem', opacity: 0.3 }}>|</span>
