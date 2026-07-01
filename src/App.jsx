@@ -165,6 +165,65 @@ export default function App() {
     return () => clearTimeout(delayDebounce);
   }, [searchSymbol, shouldSearch]);
 
+  const exportWatchlist = () => {
+    if (watchlist.length === 0) {
+      alert("Watchlist is empty. Add some stocks first before exporting.");
+      return;
+    }
+    const cleanWatchlist = watchlist.map(({ symbol, name, buyPrice, target1, target2, stopLoss }) => ({
+      symbol, name, buyPrice, target1, target2, stopLoss
+    }));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanWatchlist, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "stock_watchlist.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const importWatchlist = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileReader = new FileReader();
+    fileReader.readAsText(file, "UTF-8");
+    fileReader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        if (Array.isArray(parsed)) {
+          setWatchlist(prev => {
+            const merged = [...prev];
+            parsed.forEach(newItem => {
+              const sym = newItem.symbol ? newItem.symbol.toUpperCase() : '';
+              if (sym && !merged.some(item => item.symbol.toUpperCase() === sym)) {
+                merged.push({
+                  symbol: newItem.symbol,
+                  name: newItem.name || '',
+                  buyPrice: newItem.buyPrice ? parseFloat(newItem.buyPrice) : null,
+                  target1: newItem.target1 ? parseFloat(newItem.target1) : null,
+                  target2: newItem.target2 ? parseFloat(newItem.target2) : null,
+                  stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null,
+                  currentPrice: null,
+                  changePercent: 0,
+                  change: 0
+                });
+              }
+            });
+            return merged;
+          });
+          alert("Watchlist imported successfully! Refreshing prices...");
+          setTimeout(refreshPrices, 100);
+        } else {
+          alert("Invalid file format. Expected a JSON array.");
+        }
+      } catch (err) {
+        alert("Failed to parse JSON file.");
+      }
+    };
+    e.target.value = null;
+  };
+
   return (
     <div className="container">
       <header>
@@ -176,6 +235,13 @@ export default function App() {
           <button className="btn btn-secondary" onClick={refreshPrices} disabled={loading}>
             {loading ? 'Refreshing...' : '🔄 Refresh'}
           </button>
+          <button className="btn btn-secondary" onClick={exportWatchlist}>
+            📤 Export
+          </button>
+          <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+            📥 Import
+            <input type="file" accept=".json" onChange={importWatchlist} style={{ display: 'none' }} />
+          </label>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
             ➕ Add Stock
           </button>
