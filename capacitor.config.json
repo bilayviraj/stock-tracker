@@ -1,0 +1,6 @@
+{
+  "appId": "com.indianstocktracker.app",
+  "appName": "Indian Stock Tracker",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

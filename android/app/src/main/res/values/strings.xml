@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Indian Stock Tracker</string>
+    <string name="title_activity_main">Indian Stock Tracker</string>
+    <string name="package_name">com.indianstocktracker.app</string>
+    <string name="custom_url_scheme">com.indianstocktracker.app</string>
+</resources>
