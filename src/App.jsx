@@ -341,7 +341,7 @@ export default function App() {
         </div>
         <div className="header-actions">
           <button className="btn btn-icon btn-primary" onClick={() => setShowAddModal(true)} title="Add Stock">
-            ➕
+            +
           </button>
           <div className="menu-container" style={{ position: 'relative' }}>
             <button className="btn btn-icon btn-secondary" onClick={() => setShowMenu(!showMenu)} title="Menu">

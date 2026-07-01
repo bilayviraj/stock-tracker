@@ -78,15 +78,22 @@ body {
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 6rem;
+  padding: 0 1.5rem 6rem;
 }
 
 /* Glassmorphic Header */
 header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10, 14, 22, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2.5rem;
+  padding-top: 2rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-color);
 }
@@ -276,10 +283,13 @@ header {
   min-width: 38px;
   padding: 0 !important;
   border-radius: 50% !important;
-  font-size: 1rem;
+  font-size: 1.4rem;
+  font-weight: 500;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
+  color: #ffffff !important;
+  line-height: 1;
 }
 
 .dropdown-menu {
@@ -590,7 +600,7 @@ header {
 /* Mobile-friendly layouts */
 @media (max-width: 600px) {
   .container {
-    padding: 1rem 0.75rem 5rem;
+    padding: 0 0.75rem 5rem;
   }
   header {
     flex-direction: row;
@@ -598,6 +608,7 @@ header {
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 1.5rem;
+    padding-top: 1.25rem;
     padding-bottom: 1.25rem;
   }
   .logo-section {
