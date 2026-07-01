@@ -3,10 +3,7 @@ import React, { useState, useEffect } from 'react';
 const API_BASE = '/api';
 
 export default function App() {
-  const [watchlist, setWatchlist] = useState(() => {
-    const saved = localStorage.getItem('stock_watchlist');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [watchlist, setWatchlist] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchSymbol, setSearchSymbol] = useState('');
@@ -23,26 +20,8 @@ export default function App() {
   const [editTarget2, setEditTarget2] = useState('');
   const [editStopLoss, setEditStopLoss] = useState('');
 
-  // Auto refresh interval setup
-  useEffect(() => {
-    localStorage.setItem('stock_watchlist', JSON.stringify(watchlist));
-  }, [watchlist]);
-
-  useEffect(() => {
-    // Initial fetch of current prices
-    refreshPrices();
-    
-    // Auto-refresh every 60 seconds
-    const interval = setInterval(refreshPrices, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const refreshPrices = async () => {
-    const saved = localStorage.getItem('stock_watchlist');
-    const list = saved ? JSON.parse(saved) : watchlist;
-    if (list.length === 0) return;
-
-    setLoading(true);
+  const fetchPricesForList = async (list) => {
+    if (!list || list.length === 0) return;
     const symbols = list.map(item => item.symbol).join(',');
 
     try {
@@ -66,11 +45,41 @@ export default function App() {
         });
       });
     } catch (error) {
-      console.error('Error refreshing prices:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching prices:', error);
     }
   };
+
+  const refreshPrices = async () => {
+    if (watchlist.length === 0) return;
+    setLoading(true);
+    await fetchPricesForList(watchlist);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const initWatchlist = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`${API_BASE}/watchlist`);
+        if (response.ok) {
+          const list = await response.json();
+          setWatchlist(list);
+          if (list.length > 0) {
+            await fetchPricesForList(list);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load watchlist from DB:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initWatchlist();
+
+    const interval = setInterval(refreshPrices, 60000);
+    return () => clearInterval(interval);
+  }, [watchlist.length]);
 
   const handleAddStock = async (e) => {
     e.preventDefault();
@@ -100,13 +109,29 @@ export default function App() {
 
       if (data.error) throw new Error(data.error);
 
+      // Save to database
+      const dbResponse = await fetch(`${API_BASE}/watchlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: data.symbol,
+          name: data.name,
+          buyPrice: buyPrice ? parseFloat(buyPrice) : null,
+          target1: target1 ? parseFloat(target1) : null,
+          target2: target2 ? parseFloat(target2) : null,
+          stopLoss: stopLoss ? parseFloat(stopLoss) : null
+        })
+      });
+
+      if (!dbResponse.ok) {
+        const errData = await dbResponse.json();
+        throw new Error(errData.error || 'Failed to save stock to database');
+      }
+
+      const dbStock = await dbResponse.json();
+
       const newStock = {
-        symbol: data.symbol,
-        name: data.name,
-        buyPrice: buyPrice ? parseFloat(buyPrice) : null,
-        target1: target1 ? parseFloat(target1) : null,
-        target2: target2 ? parseFloat(target2) : null,
-        stopLoss: stopLoss ? parseFloat(stopLoss) : null,
+        ...dbStock,
         currentPrice: data.price,
         changePercent: data.changePercent,
         change: data.change
@@ -129,8 +154,19 @@ export default function App() {
     }
   };
 
-  const handleRemoveStock = (symbol) => {
-    setWatchlist(prev => prev.filter(item => item.symbol !== symbol));
+  const handleRemoveStock = async (symbol) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/watchlist/${symbol}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Failed to delete from database');
+      setWatchlist(prev => prev.filter(item => item.symbol !== symbol));
+    } catch (err) {
+      alert(err.message || 'Error removing stock');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEditClick = (stock) => {
@@ -142,22 +178,43 @@ export default function App() {
     setShowEditModal(true);
   };
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
-    setWatchlist(prev => prev.map(item => {
-      if (item.symbol.toUpperCase() === editingStock.symbol.toUpperCase()) {
-        return {
-          ...item,
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/watchlist/${editingStock.symbol}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           buyPrice: editBuyPrice ? parseFloat(editBuyPrice) : null,
           target1: editTarget1 ? parseFloat(editTarget1) : null,
           target2: editTarget2 ? parseFloat(editTarget2) : null,
           stopLoss: editStopLoss ? parseFloat(editStopLoss) : null
-        };
-      }
-      return item;
-    }));
-    setShowEditModal(false);
-    setEditingStock(null);
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to update stock in database');
+      const updatedStock = await response.json();
+
+      setWatchlist(prev => prev.map(item => {
+        if (item.symbol.toUpperCase() === editingStock.symbol.toUpperCase()) {
+          return {
+            ...item,
+            buyPrice: updatedStock.buyPrice,
+            target1: updatedStock.target1,
+            target2: updatedStock.target2,
+            stopLoss: updatedStock.stopLoss
+          };
+        }
+        return item;
+      }));
+      setShowEditModal(false);
+      setEditingStock(null);
+    } catch (err) {
+      alert(err.message || 'Error saving changes');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Stats calculation
@@ -221,37 +278,53 @@ export default function App() {
 
     const fileReader = new FileReader();
     fileReader.readAsText(file, "UTF-8");
-    fileReader.onload = (event) => {
+    fileReader.onload = async (event) => {
       try {
         const parsed = JSON.parse(event.target.result);
         if (Array.isArray(parsed)) {
-          setWatchlist(prev => {
-            const merged = [...prev];
-            parsed.forEach(newItem => {
-              const sym = newItem.symbol ? newItem.symbol.toUpperCase() : '';
-              if (sym && !merged.some(item => item.symbol.toUpperCase() === sym)) {
-                merged.push({
-                  symbol: newItem.symbol,
-                  name: newItem.name || '',
-                  buyPrice: newItem.buyPrice ? parseFloat(newItem.buyPrice) : null,
-                  target1: newItem.target1 ? parseFloat(newItem.target1) : null,
-                  target2: newItem.target2 ? parseFloat(newItem.target2) : null,
-                  stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null,
-                  currentPrice: null,
-                  changePercent: 0,
-                  change: 0
+          setLoading(true);
+          let importCount = 0;
+          for (const newItem of parsed) {
+            const sym = newItem.symbol ? newItem.symbol.toUpperCase() : '';
+            if (sym && !watchlist.some(item => item.symbol.toUpperCase() === sym)) {
+              try {
+                await fetch(`${API_BASE}/watchlist`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    symbol: newItem.symbol,
+                    name: newItem.name || '',
+                    buyPrice: newItem.buyPrice ? parseFloat(newItem.buyPrice) : null,
+                    target1: newItem.target1 ? parseFloat(newItem.target1) : null,
+                    target2: newItem.target2 ? parseFloat(newItem.target2) : null,
+                    stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null
+                  })
                 });
+                importCount++;
+              } catch (e) {
+                console.error("Failed to import symbol", sym, e);
               }
-            });
-            return merged;
-          });
-          alert("Watchlist imported successfully! Refreshing prices...");
-          setTimeout(refreshPrices, 100);
+            }
+          }
+          
+          // Refresh list from DB
+          const response = await fetch(`${API_BASE}/watchlist`);
+          if (response.ok) {
+            const list = await response.json();
+            setWatchlist(list);
+            if (list.length > 0) {
+              await fetchPricesForList(list);
+            }
+          }
+          
+          alert(`Watchlist imported: ${importCount} new stocks added successfully!`);
         } else {
           alert("Invalid file format. Expected a JSON array.");
         }
       } catch (err) {
         alert("Failed to parse JSON file.");
+      } finally {
+        setLoading(false);
       }
     };
     e.target.value = null;

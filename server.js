@@ -2,12 +2,22 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { kv } from '@vercel/kv';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Check Vercel KV credentials
+if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+  console.warn("WARNING: Vercel KV environment variables (KV_REST_API_URL / KV_REST_API_TOKEN) are not defined!");
+}
+
 
 // Helper function to fetch stock data from Yahoo Finance chart API
 async function fetchStockQuote(symbol) {
@@ -133,6 +143,109 @@ app.get('/api/search', async (req, res) => {
   } catch (error) {
     console.error('Error searching stocks:', error);
     res.status(500).json({ error: 'Search failed', details: error.message });
+  }
+});
+
+// Get watchlist from Vercel KV
+app.get('/api/watchlist', async (req, res) => {
+  try {
+    const list = await kv.get('watchlist');
+    res.json(list || []);
+  } catch (error) {
+    console.error('Error fetching watchlist from KV:', error);
+    res.status(500).json({ error: 'Failed to fetch watchlist', details: error.message });
+  }
+});
+
+// Add stock to watchlist in Vercel KV
+app.post('/api/watchlist', async (req, res) => {
+  const { symbol, name, buyPrice, target1, target2, stopLoss } = req.body;
+  if (!symbol || !name) {
+    return res.status(400).json({ error: 'Symbol and name are required' });
+  }
+
+  try {
+    const cleanSymbol = symbol.toUpperCase();
+    const list = await kv.get('watchlist') || [];
+    
+    if (list.some(item => item.symbol === cleanSymbol)) {
+      return res.status(400).json({ error: 'Stock already in watchlist' });
+    }
+
+    const newStock = {
+      symbol: cleanSymbol,
+      name,
+      buyPrice: buyPrice ? parseFloat(buyPrice) : null,
+      target1: target1 ? parseFloat(target1) : null,
+      target2: target2 ? parseFloat(target2) : null,
+      stopLoss: stopLoss ? parseFloat(stopLoss) : null
+    };
+
+    list.push(newStock);
+    await kv.set('watchlist', list);
+    res.status(201).json(newStock);
+  } catch (error) {
+    console.error('Error saving stock to KV:', error);
+    res.status(500).json({ error: 'Failed to add stock', details: error.message });
+  }
+});
+
+// Update stock in watchlist in Vercel KV
+app.put('/api/watchlist/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+  const { buyPrice, target1, target2, stopLoss } = req.body;
+
+  try {
+    const cleanSymbol = symbol.toUpperCase();
+    let list = await kv.get('watchlist') || [];
+    let updatedStock = null;
+
+    list = list.map(item => {
+      if (item.symbol === cleanSymbol) {
+        updatedStock = {
+          ...item,
+          buyPrice: buyPrice !== undefined && buyPrice !== null ? parseFloat(buyPrice) : null,
+          target1: target1 !== undefined && target1 !== null ? parseFloat(target1) : null,
+          target2: target2 !== undefined && target2 !== null ? parseFloat(target2) : null,
+          stopLoss: stopLoss !== undefined && stopLoss !== null ? parseFloat(stopLoss) : null
+        };
+        return updatedStock;
+      }
+      return item;
+    });
+
+    if (!updatedStock) {
+      return res.status(404).json({ error: 'Stock not found' });
+    }
+
+    await kv.set('watchlist', list);
+    res.json(updatedStock);
+  } catch (error) {
+    console.error('Error updating stock in KV:', error);
+    res.status(500).json({ error: 'Failed to update stock', details: error.message });
+  }
+});
+
+// Delete stock from watchlist in Vercel KV
+app.delete('/api/watchlist/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+
+  try {
+    const cleanSymbol = symbol.toUpperCase();
+    let list = await kv.get('watchlist') || [];
+    const initialLength = list.length;
+
+    list = list.filter(item => item.symbol !== cleanSymbol);
+
+    if (list.length === initialLength) {
+      return res.status(404).json({ error: 'Stock not found' });
+    }
+
+    await kv.set('watchlist', list);
+    res.json({ message: 'Stock removed successfully', symbol: cleanSymbol });
+  } catch (error) {
+    console.error('Error deleting stock from KV:', error);
+    res.status(500).json({ error: 'Failed to delete stock', details: error.message });
   }
 });
 
