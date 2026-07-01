@@ -408,7 +408,17 @@ export default function App() {
                     </div>
                     <div className="name" title={stock.name}>{stock.name}</div>
                     {stock.buyPrice && (
-                      <div className="buy-info">Avg: ₹{stock.buyPrice.toFixed(2)}</div>
+                      <div className="buy-info">
+                        Avg: ₹{stock.buyPrice.toFixed(2)}
+                        {pctChangeFromBuy !== null && (
+                          <>
+                            <span style={{ margin: '0 0.5rem', opacity: 0.3 }}>|</span>
+                            <span style={{ color: pctChangeFromBuy >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
+                              P&L: {pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}%
+                            </span>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -438,23 +448,7 @@ export default function App() {
 
                 {isExpanded && (
                   <div className="stock-row-expanded">
-                    <div className="expanded-alerts">
-                      <span className={`target-tag ${isTarget1Hit ? 'hit' : ''}`}>
-                        T1: {stock.target1 ? `₹${stock.target1.toFixed(2)}` : '—'}
-                      </span>
-                      <span className={`target-tag ${isTarget2Hit ? 'hit' : ''}`}>
-                        T2: {stock.target2 ? `₹${stock.target2.toFixed(2)}` : '—'}
-                      </span>
-                      <span className={`target-tag ${isStopLossHit ? 'sl-hit' : ''}`}>
-                        SL: {stock.stopLoss ? `₹${stock.stopLoss.toFixed(2)}` : '—'}
-                      </span>
-                      {pctChangeFromBuy !== null && (
-                        <span className={`returns ${pctChangeFromBuy >= 0 ? 'up' : 'down'}`} style={{ marginLeft: '0.5rem', alignSelf: 'center', fontWeight: 'bold' }}>
-                          P&L: {pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}%
-                        </span>
-                      )}
-                    </div>
-                    <div className="expanded-actions">
+                    <div className="expanded-actions" style={{ margin: '0 0 0 auto' }}>
                       <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleEditClick(stock)}>
                         Edit
                       </button>
