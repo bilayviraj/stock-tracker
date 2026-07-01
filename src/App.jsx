@@ -339,23 +339,7 @@ export default function App() {
           <h1><span>📈</span> <span className="title-text">Stock Tracker</span></h1>
           <p>Real-time stock watchlist with target & stop-loss alerts</p>
         </div>
-        <div className="header-actions desktop-actions">
-          <button className="btn btn-secondary" onClick={refreshPrices} disabled={loading}>
-            {loading ? 'Refreshing...' : '🔄 Refresh'}
-          </button>
-          <button className="btn btn-secondary" onClick={exportWatchlist}>
-            📤 Export
-          </button>
-          <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-            📥 Import
-            <input type="file" accept=".json" onChange={importWatchlist} style={{ display: 'none' }} />
-          </label>
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-            ➕ Add Stock
-          </button>
-        </div>
-
-        <div className="header-actions mobile-actions">
+        <div className="header-actions">
           <button className="btn btn-icon btn-primary" onClick={() => setShowAddModal(true)} title="Add Stock">
             ➕
           </button>

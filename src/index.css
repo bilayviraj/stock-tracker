@@ -269,13 +269,6 @@ header {
   opacity: 0.3;
 }
 
-.desktop-actions {
-  display: flex !important;
-}
-
-.mobile-actions {
-  display: none !important;
-}
 
 .btn-icon {
   width: 38px;
@@ -617,14 +610,7 @@ header {
   .logo-section p {
     display: none;
   }
-  .desktop-actions {
-    display: none !important;
-  }
-  .mobile-actions {
-    display: flex !important;
-    gap: 0.5rem;
-    align-items: center;
-  }
+
   .overall-stats {
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
