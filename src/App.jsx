@@ -334,7 +334,7 @@ export default function App() {
     <div className="container">
       <header>
         <div className="logo-section">
-          <h1><span>📈</span> Stock Tracker</h1>
+          <h1><span>📈</span> <span className="title-text">Stock Tracker</span></h1>
           <p>Real-time stock watchlist with target & stop-loss alerts</p>
         </div>
         <div className="header-actions">
