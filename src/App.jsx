@@ -350,22 +350,17 @@ export default function App() {
 
   const handleApply = () => {
     setSortBy(tempSortBy);
-    setFilterBy(tempFilterBy);
     setShowFilterModal(false);
   };
 
   const handleReset = () => {
     setTempSortBy('none');
-    setTempFilterBy('all');
     setSortBy('none');
-    setFilterBy('all');
     setShowFilterModal(false);
   };
 
   const openFilterModal = () => {
     setTempSortBy(sortBy);
-    setTempFilterBy(filterBy);
-    setActiveTab('sort');
     setShowFilterModal(true);
   };
 
@@ -517,7 +512,35 @@ export default function App() {
         </div>
       </section>
 
-
+      {/* Filter Tabs / Pills */}
+      {watchlist.length > 0 && (
+        <div className="filter-tabs-bar">
+          <button 
+            className={`filter-pill ${filterBy === 'all' ? 'active' : ''}`}
+            onClick={() => setFilterBy('all')}
+          >
+            All ({watchlist.length})
+          </button>
+          <button 
+            className={`filter-pill ${filterBy === 't1' ? 'active' : ''}`}
+            onClick={() => setFilterBy('t1')}
+          >
+            T1 ({watchlist.filter(s => s.target1 && s.currentPrice >= s.target1).length})
+          </button>
+          <button 
+            className={`filter-pill ${filterBy === 't2' ? 'active' : ''}`}
+            onClick={() => setFilterBy('t2')}
+          >
+            T2 ({watchlist.filter(s => s.target2 && s.currentPrice >= s.target2).length})
+          </button>
+          <button 
+            className={`filter-pill ${filterBy === 'sl' ? 'active' : ''}`}
+            onClick={() => setFilterBy('sl')}
+          >
+            SL ({watchlist.filter(s => s.stopLoss && s.currentPrice <= s.stopLoss).length})
+          </button>
+        </div>
+      )}
 
       {/* List of stock rows */}
       {watchlist.length === 0 ? (
@@ -820,133 +843,88 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* Bottom Sheet Sort/Filter Modal */}
+      {/* Bottom Sheet Sort Modal */}
       {showFilterModal && (
         <div className="sheet-overlay" onClick={() => setShowFilterModal(false)}>
           <div className="bottom-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-header">
-              <button 
-                className={`sheet-tab ${activeTab === 'sort' ? 'active' : ''}`}
-                onClick={() => setActiveTab('sort')}
-              >
-                Sort By
-              </button>
-              <button 
-                className={`sheet-tab ${activeTab === 'filter' ? 'active' : ''}`}
-                onClick={() => setActiveTab('filter')}
-              >
-                Filter By
-              </button>
+            <div className="sheet-header" style={{ justifyContent: 'center', padding: '1.2rem', borderBottom: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Sort Watchlist</h3>
             </div>
 
             <div className="sheet-content">
-              {activeTab === 'sort' ? (
-                <div className="sort-section animate-fade">
-                  <div className="sort-option-group">
-                    <div className="option-label">Alphabetical Order</div>
-                    <div className="button-grid">
-                      <button 
-                        className={`pill-btn ${tempSortBy === 'alpha-asc' ? 'selected' : ''}`}
-                        onClick={() => setTempSortBy(tempSortBy === 'alpha-asc' ? 'none' : 'alpha-asc')}
-                      >
-                        A to Z
-                      </button>
-                      <button 
-                        className={`pill-btn ${tempSortBy === 'alpha-desc' ? 'selected' : ''}`}
-                        onClick={() => setTempSortBy(tempSortBy === 'alpha-desc' ? 'none' : 'alpha-desc')}
-                      >
-                        Z to A
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="sort-option-group">
-                    <div className="option-label">LTP Change (%)</div>
-                    <div className="button-grid">
-                      <button 
-                        className={`pill-btn ${tempSortBy === 'change-desc' ? 'selected' : ''}`}
-                        onClick={() => setTempSortBy(tempSortBy === 'change-desc' ? 'none' : 'change-desc')}
-                      >
-                        High to Low
-                      </button>
-                      <button 
-                        className={`pill-btn ${tempSortBy === 'change-asc' ? 'selected' : ''}`}
-                        onClick={() => setTempSortBy(tempSortBy === 'change-asc' ? 'none' : 'change-asc')}
-                      >
-                        Low to High
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="sort-option-group">
-                    <div className="option-label">Overall Gain & Loss (Value)</div>
-                    <div className="button-grid">
-                      <button 
-                        className={`pill-btn ${tempSortBy === 'pnl-abs-desc' ? 'selected' : ''}`}
-                        onClick={() => setTempSortBy(tempSortBy === 'pnl-abs-desc' ? 'none' : 'pnl-abs-desc')}
-                      >
-                        High to Low
-                      </button>
-                      <button 
-                        className={`pill-btn ${tempSortBy === 'pnl-abs-asc' ? 'selected' : ''}`}
-                        onClick={() => setTempSortBy(tempSortBy === 'pnl-abs-asc' ? 'none' : 'pnl-abs-asc')}
-                      >
-                        Low to High
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="sort-option-group">
-                    <div className="option-label">Overall Gain & Loss (Percent)</div>
-                    <div className="button-grid">
-                      <button 
-                        className={`pill-btn ${tempSortBy === 'pnl-pct-desc' ? 'selected' : ''}`}
-                        onClick={() => setTempSortBy(tempSortBy === 'pnl-pct-desc' ? 'none' : 'pnl-pct-desc')}
-                      >
-                        High to Low
-                      </button>
-                      <button 
-                        className={`pill-btn ${tempSortBy === 'pnl-pct-asc' ? 'selected' : ''}`}
-                        onClick={() => setTempSortBy(tempSortBy === 'pnl-pct-asc' ? 'none' : 'pnl-pct-asc')}
-                      >
-                        Low to High
-                      </button>
-                    </div>
+              <div className="sort-section animate-fade">
+                <div className="sort-option-group">
+                  <div className="option-label">Alphabetical Order</div>
+                  <div className="button-grid">
+                    <button 
+                      className={`pill-btn ${tempSortBy === 'alpha-asc' ? 'selected' : ''}`}
+                      onClick={() => setTempSortBy(tempSortBy === 'alpha-asc' ? 'none' : 'alpha-asc')}
+                    >
+                      A to Z
+                    </button>
+                    <button 
+                      className={`pill-btn ${tempSortBy === 'alpha-desc' ? 'selected' : ''}`}
+                      onClick={() => setTempSortBy(tempSortBy === 'alpha-desc' ? 'none' : 'alpha-desc')}
+                    >
+                      Z to A
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="filter-section animate-fade">
-                  <div className="sort-option-group">
-                    <div className="option-label">Alert Status Filters</div>
-                    <div className="button-grid-vertical">
-                      <button 
-                        className={`pill-btn ${tempFilterBy === 'all' ? 'selected' : ''}`}
-                        onClick={() => setTempFilterBy('all')}
-                      >
-                        All Stocks
-                      </button>
-                      <button 
-                        className={`pill-btn ${tempFilterBy === 't1' ? 'selected' : ''}`}
-                        onClick={() => setTempFilterBy('t1')}
-                      >
-                        Target 1 Hit
-                      </button>
-                      <button 
-                        className={`pill-btn ${tempFilterBy === 't2' ? 'selected' : ''}`}
-                        onClick={() => setTempFilterBy('t2')}
-                      >
-                        Target 2 Hit
-                      </button>
-                      <button 
-                        className={`pill-btn ${tempFilterBy === 'sl' ? 'selected' : ''}`}
-                        onClick={() => setTempFilterBy('sl')}
-                      >
-                        Stop Loss Triggered
-                      </button>
-                    </div>
+
+                <div className="sort-option-group">
+                  <div className="option-label">LTP Change (%)</div>
+                  <div className="button-grid">
+                    <button 
+                      className={`pill-btn ${tempSortBy === 'change-desc' ? 'selected' : ''}`}
+                      onClick={() => setTempSortBy(tempSortBy === 'change-desc' ? 'none' : 'change-desc')}
+                    >
+                      High to Low
+                    </button>
+                    <button 
+                      className={`pill-btn ${tempSortBy === 'change-asc' ? 'selected' : ''}`}
+                      onClick={() => setTempSortBy(tempSortBy === 'change-asc' ? 'none' : 'change-asc')}
+                    >
+                      Low to High
+                    </button>
                   </div>
                 </div>
-              )}
+
+                <div className="sort-option-group">
+                  <div className="option-label">Overall Gain & Loss (Value)</div>
+                  <div className="button-grid">
+                    <button 
+                      className={`pill-btn ${tempSortBy === 'pnl-abs-desc' ? 'selected' : ''}`}
+                      onClick={() => setTempSortBy(tempSortBy === 'pnl-abs-desc' ? 'none' : 'pnl-abs-desc')}
+                    >
+                      High to Low
+                    </button>
+                    <button 
+                      className={`pill-btn ${tempSortBy === 'pnl-abs-asc' ? 'selected' : ''}`}
+                      onClick={() => setTempSortBy(tempSortBy === 'pnl-abs-asc' ? 'none' : 'pnl-abs-asc')}
+                    >
+                      Low to High
+                    </button>
+                  </div>
+                </div>
+
+                <div className="sort-option-group">
+                  <div className="option-label">Overall Gain & Loss (Percent)</div>
+                  <div className="button-grid">
+                    <button 
+                      className={`pill-btn ${tempSortBy === 'pnl-pct-desc' ? 'selected' : ''}`}
+                      onClick={() => setTempSortBy(tempSortBy === 'pnl-pct-desc' ? 'none' : 'pnl-pct-desc')}
+                    >
+                      High to Low
+                    </button>
+                    <button 
+                      className={`pill-btn ${tempSortBy === 'pnl-pct-asc' ? 'selected' : ''}`}
+                      onClick={() => setTempSortBy(tempSortBy === 'pnl-pct-asc' ? 'none' : 'pnl-pct-asc')}
+                    >
+                      Low to High
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="sheet-actions">

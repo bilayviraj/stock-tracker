@@ -917,3 +917,44 @@ header {
     max-width: 65%;
   }
 }
+
+/* Filter Pills Bar */
+.filter-tabs-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+}
+
+.filter-tabs-bar::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome/Safari */
+}
+
+.filter-pill {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.5rem 1.15rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 50px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-smooth);
+}
+
+.filter-pill:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-main);
+}
+
+.filter-pill.active {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: var(--primary-hover);
+  color: var(--text-main);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+}
+
