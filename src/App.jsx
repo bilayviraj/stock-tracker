@@ -21,6 +21,8 @@ export default function App() {
   const [editStopLoss, setEditStopLoss] = useState('');
   const [expandedSymbol, setExpandedSymbol] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [sortBy, setSortBy] = useState('none');
+  const [filterBy, setFilterBy] = useState('all');
 
   const fetchPricesForList = async (list) => {
     if (!list || list.length === 0) return;
@@ -332,6 +334,44 @@ export default function App() {
     e.target.value = null;
   };
 
+  const processedWatchlist = (() => {
+    let list = [...watchlist];
+
+    // 1. Filtering
+    if (filterBy === 't1') {
+      list = list.filter(stock => stock.target1 && stock.currentPrice >= stock.target1);
+    } else if (filterBy === 't2') {
+      list = list.filter(stock => stock.target2 && stock.currentPrice >= stock.target2);
+    } else if (filterBy === 'sl') {
+      list = list.filter(stock => stock.stopLoss && stock.currentPrice <= stock.stopLoss);
+    }
+
+    // 2. Sorting
+    list.sort((a, b) => {
+      if (sortBy === 'alpha') {
+        return a.symbol.localeCompare(b.symbol);
+      }
+      if (sortBy === 'change') {
+        const changeA = a.changePercent !== undefined ? a.changePercent : -999999;
+        const changeB = b.changePercent !== undefined ? b.changePercent : -999999;
+        return changeB - changeA;
+      }
+      if (sortBy === 'pnl-abs') {
+        const pnlA = (a.buyPrice && a.currentPrice) ? (a.currentPrice - a.buyPrice) : -999999;
+        const pnlB = (b.buyPrice && b.currentPrice) ? (b.currentPrice - b.buyPrice) : -999999;
+        return pnlB - pnlA;
+      }
+      if (sortBy === 'pnl-pct') {
+        const pctA = (a.buyPrice && a.currentPrice) ? ((a.currentPrice - a.buyPrice) / a.buyPrice) * 100 : -999999;
+        const pctB = (b.buyPrice && b.currentPrice) ? ((b.currentPrice - b.buyPrice) / b.buyPrice) * 100 : -999999;
+        return pctB - pctA;
+      }
+      return 0;
+    });
+
+    return list;
+  })();
+
   return (
     <div className="container">
       <header>
@@ -411,17 +451,49 @@ export default function App() {
         </div>
       </section>
 
+      {/* Sorting and Filtering Controls */}
+      {watchlist.length > 0 && (
+        <div className="watchlist-controls">
+          <div className="control-group">
+            <label>Sort By</label>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="control-select">
+              <option value="none">Default</option>
+              <option value="alpha">Alphabetical</option>
+              <option value="change">Daily % Change</option>
+              <option value="pnl-abs">P&L Absolute (₹)</option>
+              <option value="pnl-pct">P&L (%)</option>
+            </select>
+          </div>
+          <div className="control-group">
+            <label>Filter By</label>
+            <select value={filterBy} onChange={(e) => setFilterBy(e.target.value)} className="control-select">
+              <option value="all">All Stocks</option>
+              <option value="t1">Target 1 Hit</option>
+              <option value="t2">Target 2 Hit</option>
+              <option value="sl">Stop Loss Triggered</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       {/* List of stock rows */}
       {watchlist.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
           <h3 style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Your watchlist is empty</h3>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>Add your first stock</button>
         </div>
+      ) : processedWatchlist.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+          <h3 style={{ color: 'var(--text-muted)' }}>No stocks match the selected filter</h3>
+        </div>
       ) : (
         <div className="watchlist-list">
-          {watchlist.map((stock) => {
+          {processedWatchlist.map((stock) => {
             const pctChangeFromBuy = (stock.buyPrice && stock.currentPrice)
               ? ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) * 100
+              : null;
+            const absPnl = (stock.buyPrice && stock.currentPrice)
+              ? stock.currentPrice - stock.buyPrice
               : null;
 
             const isTarget1Hit = stock.target1 && stock.currentPrice >= stock.target1;
@@ -441,9 +513,11 @@ export default function App() {
                     {stock.buyPrice && (
                       <div className="buy-info">
                         <span className="buy-val">Buy: ₹{stock.buyPrice.toFixed(2)}</span>
-                        {pctChangeFromBuy !== null && (
+                        {pctChangeFromBuy !== null && absPnl !== null && (
                           <span className="pnl-val">
-                            P&L: <span style={{ color: pctChangeFromBuy >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>{pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}%</span>
+                            P&L: <span style={{ color: pctChangeFromBuy >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
+                              {pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}% ({pctChangeFromBuy >= 0 ? '+' : ''}₹{absPnl.toFixed(2)})
+                            </span>
                           </span>
                         )}
                       </div>
