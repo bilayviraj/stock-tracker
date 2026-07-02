@@ -14,14 +14,24 @@ app.use(cors());
 app.use(express.json());
 
 // Check Upstash credentials and initialize client
-if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-  console.warn("WARNING: KV_REST_API_URL or KV_REST_API_TOKEN is not defined!");
-}
+let kv;
+let useLocalMemory = false;
+let localWatchlist = [];
 
-const kv = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-});
+if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+  console.warn("WARNING: KV_REST_API_URL or KV_REST_API_TOKEN is not defined! Falling back to local in-memory storage.");
+  useLocalMemory = true;
+} else {
+  try {
+    kv = new Redis({
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    });
+  } catch (err) {
+    console.error("Failed to initialize Redis client. Falling back to local in-memory storage:", err.message);
+    useLocalMemory = true;
+  }
+}
 
 
 // Helper function to fetch stock data from Yahoo Finance chart API
@@ -120,57 +130,166 @@ app.get('/api/search', async (req, res) => {
   }
 
   try {
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Origin': 'https://finance.yahoo.com',
-        'Referer': 'https://finance.yahoo.com/'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Search failed');
+    const searchQueries = [q];
+    const cleanQ = q.trim().toUpperCase();
+    if (!cleanQ.endsWith('.NS') && !cleanQ.endsWith('.BO') && !cleanQ.includes(' ')) {
+      searchQueries.push(`${cleanQ}.NS`);
+      searchQueries.push(`${cleanQ}.BO`);
     }
 
-    const data = await response.json();
-    if (!data.quotes) {
-      return res.json([]);
+    const fetchSearch = async (query) => {
+      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&region=IN&lang=en-IN`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json',
+          'Accept-Language': 'en-IN,en;q=0.9',
+          'Origin': 'https://in.finance.yahoo.com',
+          'Referer': 'https://in.finance.yahoo.com/'
+        }
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data.quotes || [];
+    };
+
+    const fetchAutocomplete = async (query) => {
+      const url = `https://query1.finance.yahoo.com/v6/finance/autocomplete?query=${encodeURIComponent(query)}&lang=en-IN&region=IN`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json',
+          'Accept-Language': 'en-IN,en;q=0.9',
+          'Origin': 'https://in.finance.yahoo.com',
+          'Referer': 'https://in.finance.yahoo.com/'
+        }
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return (data.ResultSet && data.ResultSet.Result) ? data.ResultSet.Result : [];
+    };
+
+    // Query both endpoints for all queries in parallel
+    const promises = [];
+    for (const query of searchQueries) {
+      promises.push(fetchSearch(query));
+      promises.push(fetchAutocomplete(query));
+    }
+
+    const resultsArray = await Promise.all(promises);
+    const allQuotes = resultsArray.flat();
+    const uniqueQuotes = [];
+    const seenSymbols = new Set();
+
+    for (const item of allQuotes) {
+      if (item && item.symbol) {
+        const sym = item.symbol.toUpperCase();
+        if (!seenSymbols.has(sym)) {
+          seenSymbols.add(sym);
+          uniqueQuotes.push(item);
+        }
+      }
     }
 
     // Filter for Indian stocks (ending with .NS or .BO)
-    const indianStocks = data.quotes
-      .filter(item => {
-        const sym = item.symbol ? item.symbol.toUpperCase() : '';
-        return sym.endsWith('.NS') || sym.endsWith('.BO');
-      })
-      .map(item => ({
-        symbol: item.symbol,
-        name: item.longname || item.shortname || item.symbol,
-        exchange: item.exchDisp === 'Bombay' ? 'BSE' : 'NSE'
-      }));
+    const indianStocksRaw = uniqueQuotes.filter(item => {
+      const sym = item.symbol ? item.symbol.toUpperCase() : '';
+      return sym.endsWith('.NS') || sym.endsWith('.BO');
+    });
 
-    res.json(indianStocks);
+    // Expand suggestions to include both NSE (.NS) and BSE (.BO) variants
+    const finalSuggestions = [];
+    const seenFinal = new Set();
+
+    for (const item of indianStocksRaw) {
+      const rawSym = item.symbol.toUpperCase();
+      const baseSym = rawSym.split('.')[0];
+      const name = item.longname || item.name || item.shortname || item.symbol;
+
+      const nseSym = `${baseSym}.NS`;
+      const bseSym = `${baseSym}.BO`;
+
+      if (!seenFinal.has(nseSym)) {
+        seenFinal.add(nseSym);
+        finalSuggestions.push({
+          symbol: nseSym,
+          name: name,
+          exchange: 'NSE'
+        });
+      }
+      if (!seenFinal.has(bseSym)) {
+        seenFinal.add(bseSym);
+        finalSuggestions.push({
+          symbol: bseSym,
+          name: name,
+          exchange: 'BSE'
+        });
+      }
+    }
+
+    res.json(finalSuggestions);
   } catch (error) {
     console.error('Error searching stocks:', error);
     res.status(500).json({ error: 'Search failed', details: error.message });
   }
 });
 
-// Get watchlist from Vercel KV
+// Get watchlist from Vercel KV or Local Memory
 app.get('/api/watchlist', async (req, res) => {
   try {
-    const list = await kv.get('watchlist');
-    res.json(list || []);
+    let list;
+    if (useLocalMemory) {
+      list = localWatchlist;
+    } else {
+      list = await kv.get('watchlist') || [];
+    }
+    
+    // Normalize and de-duplicate symbols (ensure they end in .NS or .BO)
+    let needsUpdate = false;
+    const seen = new Set();
+    const normalizedList = [];
+
+    for (const item of list) {
+      if (item && item.symbol) {
+        let sym = item.symbol.trim().toUpperCase();
+        if (!sym.endsWith('.NS') && !sym.endsWith('.BO')) {
+          sym = `${sym}.NS`;
+          needsUpdate = true;
+        }
+        if (!seen.has(sym)) {
+          seen.add(sym);
+          normalizedList.push({
+            ...item,
+            symbol: sym
+          });
+        } else {
+          needsUpdate = true;
+        }
+      }
+    }
+
+    if (needsUpdate) {
+      console.log('Normalizing watchlist symbols...');
+      if (useLocalMemory) {
+        localWatchlist = normalizedList;
+      } else {
+        try {
+          await kv.set('watchlist', normalizedList);
+        } catch (err) {
+          console.error('Error updating watchlist back to KV:', err);
+        }
+      }
+      res.json(normalizedList);
+    } else {
+      res.json(list);
+    }
   } catch (error) {
-    console.error('Error fetching watchlist from KV:', error);
+    console.error('Error fetching watchlist:', error);
     res.status(500).json({ error: 'Failed to fetch watchlist', details: error.message });
   }
 });
 
-// Add stock to watchlist in Vercel KV
+// Add stock to watchlist in Vercel KV or Local Memory
 app.post('/api/watchlist', async (req, res) => {
   const { symbol, name, buyPrice, target1, target2, stopLoss } = req.body;
   if (!symbol || !name) {
@@ -179,7 +298,12 @@ app.post('/api/watchlist', async (req, res) => {
 
   try {
     const cleanSymbol = symbol.toUpperCase();
-    const list = await kv.get('watchlist') || [];
+    let list;
+    if (useLocalMemory) {
+      list = localWatchlist;
+    } else {
+      list = await kv.get('watchlist') || [];
+    }
     
     if (list.some(item => item.symbol === cleanSymbol)) {
       return res.status(400).json({ error: 'Stock already in watchlist' });
@@ -195,22 +319,31 @@ app.post('/api/watchlist', async (req, res) => {
     };
 
     list.push(newStock);
-    await kv.set('watchlist', list);
+    if (useLocalMemory) {
+      localWatchlist = list;
+    } else {
+      await kv.set('watchlist', list);
+    }
     res.status(201).json(newStock);
   } catch (error) {
-    console.error('Error saving stock to KV:', error);
+    console.error('Error saving stock:', error);
     res.status(500).json({ error: 'Failed to add stock', details: error.message });
   }
 });
 
-// Update stock in watchlist in Vercel KV
+// Update stock in watchlist in Vercel KV or Local Memory
 app.put('/api/watchlist/:symbol', async (req, res) => {
   const { symbol } = req.params;
   const { buyPrice, target1, target2, stopLoss } = req.body;
 
   try {
     const cleanSymbol = symbol.toUpperCase();
-    let list = await kv.get('watchlist') || [];
+    let list;
+    if (useLocalMemory) {
+      list = localWatchlist;
+    } else {
+      list = await kv.get('watchlist') || [];
+    }
     let updatedStock = null;
 
     list = list.map(item => {
@@ -231,21 +364,30 @@ app.put('/api/watchlist/:symbol', async (req, res) => {
       return res.status(404).json({ error: 'Stock not found' });
     }
 
-    await kv.set('watchlist', list);
+    if (useLocalMemory) {
+      localWatchlist = list;
+    } else {
+      await kv.set('watchlist', list);
+    }
     res.json(updatedStock);
   } catch (error) {
-    console.error('Error updating stock in KV:', error);
+    console.error('Error updating stock:', error);
     res.status(500).json({ error: 'Failed to update stock', details: error.message });
   }
 });
 
-// Delete stock from watchlist in Vercel KV
+// Delete stock from watchlist in Vercel KV or Local Memory
 app.delete('/api/watchlist/:symbol', async (req, res) => {
   const { symbol } = req.params;
 
   try {
     const cleanSymbol = symbol.toUpperCase();
-    let list = await kv.get('watchlist') || [];
+    let list;
+    if (useLocalMemory) {
+      list = localWatchlist;
+    } else {
+      list = await kv.get('watchlist') || [];
+    }
     const initialLength = list.length;
 
     list = list.filter(item => item.symbol !== cleanSymbol);
@@ -254,10 +396,14 @@ app.delete('/api/watchlist/:symbol', async (req, res) => {
       return res.status(404).json({ error: 'Stock not found' });
     }
 
-    await kv.set('watchlist', list);
+    if (useLocalMemory) {
+      localWatchlist = list;
+    } else {
+      await kv.set('watchlist', list);
+    }
     res.json({ message: 'Stock removed successfully', symbol: cleanSymbol });
   } catch (error) {
-    console.error('Error deleting stock from KV:', error);
+    console.error('Error deleting stock:', error);
     res.status(500).json({ error: 'Failed to delete stock', details: error.message });
   }
 });

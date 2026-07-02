@@ -293,24 +293,29 @@ export default function App() {
           setLoading(true);
           let importCount = 0;
           for (const newItem of parsed) {
-            const sym = newItem.symbol ? newItem.symbol.toUpperCase() : '';
-            if (sym && !watchlist.some(item => item.symbol.toUpperCase() === sym)) {
-              try {
-                await fetch(`${API_BASE}/watchlist`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    symbol: newItem.symbol,
-                    name: newItem.name || '',
-                    buyPrice: newItem.buyPrice ? parseFloat(newItem.buyPrice) : null,
-                    target1: newItem.target1 ? parseFloat(newItem.target1) : null,
-                    target2: newItem.target2 ? parseFloat(newItem.target2) : null,
-                    stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null
-                  })
-                });
-                importCount++;
-              } catch (e) {
-                console.error("Failed to import symbol", sym, e);
+            let sym = newItem.symbol ? newItem.symbol.trim().toUpperCase() : '';
+            if (sym) {
+              if (!sym.endsWith('.NS') && !sym.endsWith('.BO')) {
+                sym = `${sym}.NS`;
+              }
+              if (!watchlist.some(item => item.symbol.toUpperCase() === sym)) {
+                try {
+                  await fetch(`${API_BASE}/watchlist`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      symbol: sym,
+                      name: newItem.name || '',
+                      buyPrice: newItem.buyPrice ? parseFloat(newItem.buyPrice) : null,
+                      target1: newItem.target1 ? parseFloat(newItem.target1) : null,
+                      target2: newItem.target2 ? parseFloat(newItem.target2) : null,
+                      stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null
+                    })
+                  });
+                  importCount++;
+                } catch (e) {
+                  console.error("Failed to import symbol", sym, e);
+                }
               }
             }
           }
