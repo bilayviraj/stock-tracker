@@ -587,7 +587,7 @@ export default function App() {
           <h3 style={{ color: 'var(--text-muted)' }}>No stocks match the selected filter</h3>
         </div>
       ) : (
-        <div className="watchlist-list">
+        <div className="watchlist-list" key={filterBy}>
           {processedWatchlist.map((stock) => {
             const pctChangeFromBuy = (stock.buyPrice && stock.currentPrice)
               ? ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) * 100

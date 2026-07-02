@@ -193,7 +193,7 @@ header {
   display: flex;
   flex-direction: column;
   border-bottom: 1px solid var(--border-color);
-  transition: var(--transition-smooth);
+  transition: background-color 0.2s ease;
 }
 
 .stock-row:last-child {
