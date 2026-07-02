@@ -348,23 +348,41 @@ export default function App() {
 
     // 2. Sorting
     list.sort((a, b) => {
-      if (sortBy === 'alpha') {
+      if (sortBy === 'alpha-asc') {
         return a.symbol.localeCompare(b.symbol);
       }
-      if (sortBy === 'change') {
+      if (sortBy === 'alpha-desc') {
+        return b.symbol.localeCompare(a.symbol);
+      }
+      if (sortBy === 'change-desc') {
         const changeA = a.changePercent !== undefined ? a.changePercent : -999999;
         const changeB = b.changePercent !== undefined ? b.changePercent : -999999;
         return changeB - changeA;
       }
-      if (sortBy === 'pnl-abs') {
+      if (sortBy === 'change-asc') {
+        const changeA = a.changePercent !== undefined ? a.changePercent : 999999;
+        const changeB = b.changePercent !== undefined ? b.changePercent : 999999;
+        return changeA - changeB;
+      }
+      if (sortBy === 'pnl-abs-desc') {
         const pnlA = (a.buyPrice && a.currentPrice) ? (a.currentPrice - a.buyPrice) : -999999;
         const pnlB = (b.buyPrice && b.currentPrice) ? (b.currentPrice - b.buyPrice) : -999999;
         return pnlB - pnlA;
       }
-      if (sortBy === 'pnl-pct') {
+      if (sortBy === 'pnl-abs-asc') {
+        const pnlA = (a.buyPrice && a.currentPrice) ? (a.currentPrice - a.buyPrice) : 999999;
+        const pnlB = (b.buyPrice && b.currentPrice) ? (b.currentPrice - b.buyPrice) : 999999;
+        return pnlA - pnlB;
+      }
+      if (sortBy === 'pnl-pct-desc') {
         const pctA = (a.buyPrice && a.currentPrice) ? ((a.currentPrice - a.buyPrice) / a.buyPrice) * 100 : -999999;
         const pctB = (b.buyPrice && b.currentPrice) ? ((b.currentPrice - b.buyPrice) / b.buyPrice) * 100 : -999999;
         return pctB - pctA;
+      }
+      if (sortBy === 'pnl-pct-asc') {
+        const pctA = (a.buyPrice && a.currentPrice) ? ((a.currentPrice - a.buyPrice) / a.buyPrice) * 100 : 999999;
+        const pctB = (b.buyPrice && b.currentPrice) ? ((b.currentPrice - b.buyPrice) / b.buyPrice) * 100 : 999999;
+        return pctA - pctB;
       }
       return 0;
     });
@@ -458,10 +476,14 @@ export default function App() {
             <label>Sort By</label>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="control-select">
               <option value="none">Default</option>
-              <option value="alpha">Alphabetical</option>
-              <option value="change">Daily % Change</option>
-              <option value="pnl-abs">P&L Absolute (₹)</option>
-              <option value="pnl-pct">P&L (%)</option>
+              <option value="alpha-asc">Alphabetical (A to Z)</option>
+              <option value="alpha-desc">Alphabetical (Z to A)</option>
+              <option value="change-desc">Change: High to Low</option>
+              <option value="change-asc">Change: Low to High</option>
+              <option value="pnl-abs-desc">P&L: High to Low (₹)</option>
+              <option value="pnl-abs-asc">P&L: Low to High (₹)</option>
+              <option value="pnl-pct-desc">P&L: High to Low (%)</option>
+              <option value="pnl-pct-asc">P&L: Low to High (%)</option>
             </select>
           </div>
           <div className="control-group">
