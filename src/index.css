@@ -594,97 +594,199 @@ header {
   opacity: 0.8;
 }
 
-/* Watchlist Controls (Sorting & Filtering) */
-.watchlist-controls {
+/* PWA Bottom Sheet Sort/Filter Modal */
+.sheet-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(4, 5, 8, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2000;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-  padding: 1rem 1.25rem;
-  background: rgba(22, 28, 41, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 10px 30px -10px rgba(0, 0, 0, 0.3);
+  justify-content: center;
+  align-items: flex-end;
+  animation: fadeIn 0.25s ease-out;
 }
 
-.control-group {
+.bottom-sheet {
+  background: #0f131c;
+  border-top: 1px solid var(--border-color);
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Tabs */
+.sheet-header {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.sheet-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 1.2rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  border-bottom: 3px solid transparent;
+  outline: none;
+}
+
+.sheet-tab.active {
+  color: var(--primary-hover);
+  border-bottom-color: var(--primary);
+  background: rgba(99, 102, 241, 0.03);
+}
+
+/* Content */
+.sheet-content {
+  padding: 1.5rem;
+  overflow-y: auto;
   flex: 1;
 }
 
-.control-group label {
-  font-size: 0.75rem;
+.sort-option-group {
+  margin-bottom: 1.5rem;
+}
+
+.sort-option-group:last-child {
+  margin-bottom: 0;
+}
+
+.option-label {
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  white-space: nowrap;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.75rem;
 }
 
-.control-select-wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 240px;
+/* Button Grids */
+.button-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
 }
 
-/* Custom Styled Select */
-.control-select {
-  width: 100%;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background: rgba(10, 14, 22, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.button-grid-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Pill Buttons */
+.pill-btn {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1.5px solid var(--border-color);
   color: var(--text-main);
-  padding: 0.6rem 2.25rem 0.6rem 1rem;
+  padding: 0.7rem 1rem;
   font-size: 0.85rem;
   font-weight: 600;
   border-radius: var(--radius-md);
   cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
   outline: none;
-  transition: all 0.2s ease-in-out;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-/* Custom Arrow Icon */
-.control-select-wrapper::after {
-  content: "";
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 6px;
-  background-color: var(--text-muted);
-  clip-path: polygon(100% 0%, 0 0%, 50% 100%);
-  pointer-events: none;
-  transition: transform 0.2s ease;
+.pill-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.control-select:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(10, 14, 22, 0.9);
-}
-
-.control-select:focus {
+.pill-btn.selected {
+  background: rgba(99, 102, 241, 0.08);
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  color: var(--primary-hover);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
 }
 
-.control-select-wrapper:focus-within::after {
-  transform: translateY(-50%) rotate(180deg);
-  background-color: var(--primary);
-}
-
-.control-select option {
+/* Action buttons at bottom */
+.sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1.15rem 1.5rem;
+  border-top: 1px solid var(--border-color);
   background: #0f131c;
-  color: var(--text-main);
-  padding: 0.5rem;
+}
+
+.reset-btn {
+  background: transparent !important;
+  border: 1.5px solid var(--border-color) !important;
+  color: var(--text-muted) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.reset-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: var(--text-main) !important;
+}
+
+.apply-btn {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+
+.apply-btn:hover {
+  background: var(--primary-hover) !important;
+}
+
+/* Animations */
+.animate-fade {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Desktop layout adaptation for bottom-sheet */
+@media (min-width: 601px) {
+  .sheet-overlay {
+    align-items: center;
+  }
+  .bottom-sheet {
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Mobile-friendly layouts */
