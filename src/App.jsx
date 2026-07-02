@@ -570,48 +570,57 @@ export default function App() {
             return (
               <div className="stock-row" key={stock.symbol}>
                 <div className="stock-row-main" onClick={() => setExpandedSymbol(isExpanded ? null : stock.symbol)}>
-                  <div className="stock-row-left">
-                    <div className="sym-container">
-                      <span className="sym">{stock.symbol.split('.')[0]}</span>
-                      <span className="exchange-badge">{stock.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}</span>
+                  {/* Top Row: Ticker Info & Market Price */}
+                  <div className="stock-row-top">
+                    <div className="stock-row-left-group">
+                      <div className="sym-container">
+                        <span className="sym">{stock.symbol.split('.')[0]}</span>
+                        <span className="exchange-badge">{stock.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}</span>
+                      </div>
+                      <div className="name" title={stock.name}>{stock.name}</div>
                     </div>
-                    <div className="name" title={stock.name}>{stock.name}</div>
-                    {stock.buyPrice && (
+
+                    <div className="stock-row-right-group">
+                      <span className="price">₹{stock.currentPrice?.toFixed(2) || 'N/A'}</span>
+                      {stock.changePercent !== undefined && (
+                        <span className={`returns ${stock.change >= 0 ? 'up' : 'down'}`}>
+                          {stock.change >= 0 ? '▲' : '▼'} {Math.abs(stock.changePercent).toFixed(2)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Buy Details, P&L, and Targets */}
+                  {(stock.buyPrice || stock.target1 || stock.target2 || stock.stopLoss) && (
+                    <div className="stock-row-bottom">
                       <div className="buy-info">
-                        <span className="buy-val">Buy: ₹{stock.buyPrice.toFixed(2)}</span>
-                        {pctChangeFromBuy !== null && absPnl !== null && (
-                          <span className="pnl-val">
-                            P&L: <span style={{ color: pctChangeFromBuy >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
-                              {pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}% ({pctChangeFromBuy >= 0 ? '+' : ''}₹{absPnl.toFixed(2)})
-                            </span>
-                          </span>
+                        {stock.buyPrice && (
+                          <>
+                            <span className="buy-val">Buy: ₹{stock.buyPrice.toFixed(2)}</span>
+                            {pctChangeFromBuy !== null && absPnl !== null && (
+                              <span className="pnl-val">
+                                P&L: <span style={{ color: pctChangeFromBuy >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
+                                  {pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}% ({pctChangeFromBuy >= 0 ? '+' : ''}₹{absPnl.toFixed(2)})
+                                </span>
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="stock-row-middle">
-                    <div className="target-info">
-                      <span className={`target-tag ${isTarget1Hit ? 'hit' : ''}`}>
-                        T1: {stock.target1 ? `₹${stock.target1.toFixed(2)}` : '—'}
-                      </span>
-                      <span className={`target-tag ${isTarget2Hit ? 'hit' : ''}`}>
-                        T2: {stock.target2 ? `₹${stock.target2.toFixed(2)}` : '—'}
-                      </span>
-                      <span className={`target-tag ${isStopLossHit ? 'sl-hit' : ''}`}>
-                        SL: {stock.stopLoss ? `₹${stock.stopLoss.toFixed(2)}` : '—'}
-                      </span>
+                      <div className="target-info">
+                        <span className={`target-tag ${isTarget1Hit ? 'hit' : ''}`}>
+                          T1: {stock.target1 ? `₹${stock.target1.toFixed(2)}` : '—'}
+                        </span>
+                        <span className={`target-tag ${isTarget2Hit ? 'hit' : ''}`}>
+                          T2: {stock.target2 ? `₹${stock.target2.toFixed(2)}` : '—'}
+                        </span>
+                        <span className={`target-tag ${isStopLossHit ? 'sl-hit' : ''}`}>
+                          SL: {stock.stopLoss ? `₹${stock.stopLoss.toFixed(2)}` : '—'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="stock-row-right">
-                    <span className="price">₹{stock.currentPrice?.toFixed(2) || 'N/A'}</span>
-                    {stock.changePercent !== undefined && (
-                      <span className={`returns ${stock.change >= 0 ? 'up' : 'down'}`}>
-                        {stock.change >= 0 ? '▲' : '▼'} {Math.abs(stock.changePercent).toFixed(2)}%
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
 
                 {isExpanded && (

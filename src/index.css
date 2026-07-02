@@ -206,28 +206,34 @@ header {
 
 .stock-row-main {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.25rem;
+  flex-direction: column;
+  padding: 1.15rem 1.5rem;
   cursor: pointer;
   user-select: none;
+  gap: 0.75rem;
 }
 
-.stock-row-left {
+.stock-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.stock-row-left-group {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  flex: 1.2;
+  gap: 4px;
+  flex: 1.5;
   min-width: 0;
 }
 
-.stock-row-left .sym-container {
+.stock-row-left-group .sym-container {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.stock-row-left .sym {
+.stock-row-left-group .sym {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-main);
@@ -246,34 +252,13 @@ header {
   letter-spacing: 0.5px;
 }
 
-.stock-row-left .name {
-  font-size: 0.8rem;
+.stock-row-left-group .name {
+  font-size: 0.85rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 90%;
-}
-
-.stock-row-left .buy-info {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  font-size: 0.75rem;
-  color: var(--text-dark);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.stock-row-left .buy-info .pnl-val {
-  display: inline-flex;
-  align-items: center;
-}
-
-.stock-row-left .buy-info .pnl-val::before {
-  content: "|";
-  margin-right: 0.5rem;
-  opacity: 0.3;
+  max-width: 95%;
 }
 
 
@@ -325,17 +310,65 @@ header {
   background: rgba(255, 255, 255, 0.05);
 }
 
-.stock-row-middle {
+.stock-row-right-group {
   display: flex;
-  align-items: center;
-  flex: 1.5;
-  padding: 0 1rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 1;
 }
 
-.stock-row-middle .target-info {
+.stock-row-right-group .price {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-row-right-group .returns {
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.stock-row-right-group .returns.up {
+  color: var(--gain);
+  background: var(--gain-bg);
+}
+
+.stock-row-right-group .returns.down {
+  color: var(--loss);
+  background: var(--loss-bg);
+}
+
+.stock-row-bottom {
   display: flex;
-  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px dashed rgba(255, 255, 255, 0.05);
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
   flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stock-row-bottom .buy-info {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.stock-row-bottom .target-info {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
 }
 
 .target-tag {
@@ -359,41 +392,6 @@ header {
   background: var(--loss-bg);
   color: var(--loss);
   border-color: rgba(244, 63, 94, 0.2);
-}
-
-.stock-row-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  flex: 0.8;
-}
-
-.stock-row-right .price {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text-main);
-  font-variant-numeric: tabular-nums;
-}
-
-.stock-row-right .returns {
-  font-size: 0.8rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-
-.stock-row-right .returns.up {
-  color: var(--gain);
-  background: var(--gain-bg);
-}
-
-.stock-row-right .returns.down {
-  color: var(--loss);
-  background: var(--loss-bg);
 }
 
 /* Expanded Actions and Targets Drawer */
@@ -837,38 +835,42 @@ header {
   .stat-icon {
     display: none;
   }
-  .stock-row-left {
-    flex: 1.6;
+  .stock-row-main {
+    padding: 0.85rem 1rem;
+    gap: 0.6rem;
   }
-  .stock-row-left .buy-info {
+  .stock-row-left-group .sym {
+    font-size: 1.05rem;
+  }
+  .stock-row-left-group .name {
+    font-size: 0.75rem;
+    max-width: 90%;
+  }
+  .stock-row-right-group .price {
+    font-size: 1.05rem;
+  }
+  .stock-row-bottom {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+    align-items: stretch;
+    gap: 0.5rem;
   }
-  .stock-row-left .buy-info .pnl-val::before {
-    display: none;
-  }
-  .stock-row-middle {
+  .stock-row-bottom .buy-info {
     display: flex;
-    padding: 0 0.25rem;
-    flex: 1;
-    justify-content: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    width: 100%;
+  }
+  .stock-row-bottom .target-info {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.4rem;
   }
   .target-tag {
+    flex: 1;
+    text-align: center;
     font-size: 0.65rem;
-    padding: 2px 4px;
-  }
-  .stock-row-main {
-    padding: 0.8rem 0.5rem;
-  }
-  .stock-row-left .sym {
-    font-size: 1.05rem;
-  }
-  .stock-row-right {
-    flex: 0.8;
-  }
-  .stock-row-right .price {
-    font-size: 1.05rem;
+    padding: 3px 2px;
   }
   .stock-row-expanded {
     padding: 0.5rem 0.75rem;
