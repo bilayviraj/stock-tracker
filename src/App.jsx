@@ -33,7 +33,7 @@ export default function App() {
     const symbols = list.map(item => item.symbol).join(',');
 
     try {
-      const response = await fetch(`${API_BASE}/quotes?symbols=${symbols}`);
+      const response = await fetch(`${API_BASE}/quotes?symbols=${encodeURIComponent(symbols)}`);
       if (!response.ok) throw new Error('Failed to fetch stock updates');
       const data = await response.json();
 
@@ -116,7 +116,7 @@ export default function App() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/quote?symbol=${symbol}`);
+      const response = await fetch(`${API_BASE}/quote?symbol=${encodeURIComponent(symbol)}`);
       if (!response.ok) throw new Error('Stock not found or API error');
       const data = await response.json();
 
@@ -170,7 +170,7 @@ export default function App() {
   const handleRemoveStock = async (symbol) => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/watchlist/${symbol}`, {
+      const response = await fetch(`${API_BASE}/watchlist/${encodeURIComponent(symbol)}`, {
         method: 'DELETE'
       });
       if (!response.ok) throw new Error('Failed to delete from database');
@@ -195,7 +195,7 @@ export default function App() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/watchlist/${editingStock.symbol}`, {
+      const response = await fetch(`${API_BASE}/watchlist/${encodeURIComponent(editingStock.symbol)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -645,7 +645,7 @@ export default function App() {
                           setShowSuggestions(false);
                           setSelectedStockPrice(null);
                           try {
-                            const response = await fetch(`${API_BASE}/quote?symbol=${item.symbol}`);
+                            const response = await fetch(`${API_BASE}/quote?symbol=${encodeURIComponent(item.symbol)}`);
                             if (response.ok) {
                               const quote = await response.json();
                               setSelectedStockPrice(quote.price);
