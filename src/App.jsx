@@ -57,10 +57,15 @@ export default function App() {
     }
   };
 
+  const watchlistRef = React.useRef(watchlist);
+  useEffect(() => {
+    watchlistRef.current = watchlist;
+  }, [watchlist]);
+
   const refreshPrices = async () => {
-    if (watchlist.length === 0) return;
+    if (watchlistRef.current.length === 0) return;
     setLoading(true);
-    await fetchPricesForList(watchlist);
+    await fetchPricesForList(watchlistRef.current);
     setLoading(false);
   };
 
@@ -87,7 +92,7 @@ export default function App() {
 
     const interval = setInterval(refreshPrices, 60000);
     return () => clearInterval(interval);
-  }, [watchlist.length]);
+  }, []);
 
   const handleAddStock = async (e) => {
     e.preventDefault();
