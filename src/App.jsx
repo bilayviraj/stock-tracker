@@ -474,26 +474,30 @@ export default function App() {
         <div className="watchlist-controls">
           <div className="control-group">
             <label>Sort By</label>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="control-select">
-              <option value="none">Default</option>
-              <option value="alpha-asc">Alphabetical (A to Z)</option>
-              <option value="alpha-desc">Alphabetical (Z to A)</option>
-              <option value="change-desc">Change: High to Low</option>
-              <option value="change-asc">Change: Low to High</option>
-              <option value="pnl-abs-desc">P&L: High to Low (₹)</option>
-              <option value="pnl-abs-asc">P&L: Low to High (₹)</option>
-              <option value="pnl-pct-desc">P&L: High to Low (%)</option>
-              <option value="pnl-pct-asc">P&L: Low to High (%)</option>
-            </select>
+            <div className="control-select-wrapper">
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="control-select">
+                <option value="none">Default</option>
+                <option value="alpha-asc">Alphabetical (A to Z)</option>
+                <option value="alpha-desc">Alphabetical (Z to A)</option>
+                <option value="change-desc">Change: High to Low</option>
+                <option value="change-asc">Change: Low to High</option>
+                <option value="pnl-abs-desc">P&L: High to Low (₹)</option>
+                <option value="pnl-abs-asc">P&L: Low to High (₹)</option>
+                <option value="pnl-pct-desc">P&L: High to Low (%)</option>
+                <option value="pnl-pct-asc">P&L: Low to High (%)</option>
+              </select>
+            </div>
           </div>
           <div className="control-group">
             <label>Filter By</label>
-            <select value={filterBy} onChange={(e) => setFilterBy(e.target.value)} className="control-select">
-              <option value="all">All Stocks</option>
-              <option value="t1">Target 1 Hit</option>
-              <option value="t2">Target 2 Hit</option>
-              <option value="sl">Stop Loss Triggered</option>
-            </select>
+            <div className="control-select-wrapper">
+              <select value={filterBy} onChange={(e) => setFilterBy(e.target.value)} className="control-select">
+                <option value="all">All Stocks</option>
+                <option value="t1">Target 1 Hit</option>
+                <option value="t2">Target 2 Hit</option>
+                <option value="sl">Stop Loss Triggered</option>
+              </select>
+            </div>
           </div>
         </div>
       )}
