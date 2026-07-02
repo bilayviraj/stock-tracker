@@ -6,6 +6,7 @@ export default function App() {
   const [watchlist, setWatchlist] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [searchSymbol, setSearchSymbol] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
   const [target1, setTarget1] = useState('');
@@ -85,6 +86,7 @@ export default function App() {
         console.error('Failed to load watchlist from DB:', error);
       } finally {
         setLoading(false);
+        setIsInitialLoad(false);
       }
     };
 
@@ -556,7 +558,26 @@ export default function App() {
       )}
 
       {/* List of stock rows */}
-      {watchlist.length === 0 ? (
+      {isInitialLoad ? (
+        <div className="watchlist-list skeleton-container">
+          {[1, 2, 3].map((i) => (
+            <div className="skeleton-row" key={i}>
+              <div className="skeleton-top">
+                <div className="skeleton-bar skeleton-sym"></div>
+                <div className="skeleton-bar skeleton-price"></div>
+              </div>
+              <div className="skeleton-bottom">
+                <div className="skeleton-bar skeleton-buy"></div>
+                <div className="skeleton-targets">
+                  <div className="skeleton-bar skeleton-tag"></div>
+                  <div className="skeleton-bar skeleton-tag"></div>
+                  <div className="skeleton-bar skeleton-tag"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : watchlist.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
           <h3 style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Your watchlist is empty</h3>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>Add your first stock</button>
