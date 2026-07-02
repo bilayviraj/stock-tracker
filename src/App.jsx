@@ -374,6 +374,10 @@ export default function App() {
       list = list.filter(stock => stock.target2 && stock.currentPrice >= stock.target2);
     } else if (filterBy === 'sl') {
       list = list.filter(stock => stock.stopLoss && stock.currentPrice <= stock.stopLoss);
+    } else if (filterBy === 'profitable') {
+      list = list.filter(stock => stock.buyPrice && stock.currentPrice && stock.currentPrice >= stock.buyPrice);
+    } else if (filterBy === 'losing') {
+      list = list.filter(stock => stock.buyPrice && stock.currentPrice && stock.currentPrice < stock.buyPrice);
     }
 
     // 2. Sorting
@@ -489,21 +493,30 @@ export default function App() {
 
       {/* Summary statistics */}
       <section className="overall-stats">
-        <div className="stat-card">
+        <div 
+          className={`stat-card ${filterBy === 'all' ? 'active-all' : ''}`}
+          onClick={() => setFilterBy('all')}
+        >
           <div className="stat-card-info">
             <p>Total Tracked</p>
             <h3>{totalStocks}</h3>
           </div>
           <span className="stat-icon">📊</span>
         </div>
-        <div className="stat-card">
+        <div 
+          className={`stat-card ${filterBy === 'profitable' ? 'active-profitable' : ''}`}
+          onClick={() => setFilterBy('profitable')}
+        >
           <div className="stat-card-info">
             <p>Profitable Positions</p>
             <h3 style={{ color: 'var(--gain)' }}>{profitableStocks}</h3>
           </div>
           <span className="stat-icon">🟢</span>
         </div>
-        <div className="stat-card">
+        <div 
+          className={`stat-card ${filterBy === 'losing' ? 'active-losing' : ''}`}
+          onClick={() => setFilterBy('losing')}
+        >
           <div className="stat-card-info">
             <p>Negative Positions</p>
             <h3 style={{ color: 'var(--loss)' }}>{losingStocks}</h3>
