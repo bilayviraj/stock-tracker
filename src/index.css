@@ -185,7 +185,6 @@ header {
   -webkit-backdrop-filter: var(--backdrop-blur);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  overflow: hidden;
   box-shadow: var(--card-shadow);
 }
 
@@ -194,6 +193,23 @@ header {
   flex-direction: column;
   border-bottom: 1px solid var(--border-color);
   transition: background-color 0.2s ease;
+}
+
+.stock-row:first-child,
+.stock-row:first-child .stock-row-main {
+  border-top-left-radius: calc(var(--radius-lg) - 1.5px);
+  border-top-right-radius: calc(var(--radius-lg) - 1.5px);
+}
+
+.stock-row:last-child,
+.stock-row:last-child .stock-row-main {
+  border-bottom-left-radius: calc(var(--radius-lg) - 1.5px);
+  border-bottom-right-radius: calc(var(--radius-lg) - 1.5px);
+}
+
+.stock-row:last-child .stock-row-expanded {
+  border-bottom-left-radius: calc(var(--radius-lg) - 1.5px);
+  border-bottom-right-radius: calc(var(--radius-lg) - 1.5px);
 }
 
 .stock-row:last-child {
