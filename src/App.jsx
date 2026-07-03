@@ -380,6 +380,14 @@ export default function App() {
       list = list.filter(stock => stock.buyPrice && stock.currentPrice && stock.currentPrice >= stock.buyPrice);
     } else if (filterBy === 'losing') {
       list = list.filter(stock => stock.buyPrice && stock.currentPrice && stock.currentPrice < stock.buyPrice);
+    } else if (filterBy === 'near-t2') {
+      list = list.filter(stock => stock.target2 && stock.currentPrice && (
+        stock.target1 
+          ? (stock.currentPrice < stock.target2 && stock.currentPrice >= stock.target2 - (stock.target2 - stock.target1) * 0.2)
+          : (stock.currentPrice < stock.target2 && stock.currentPrice >= stock.target2 * 0.98)
+      ));
+    } else if (filterBy === 'near-sl') {
+      list = list.filter(stock => stock.stopLoss && stock.currentPrice && stock.currentPrice > stock.stopLoss && stock.currentPrice <= stock.stopLoss * 1.02);
     }
 
     // 2. Sorting
@@ -553,6 +561,22 @@ export default function App() {
             onClick={() => setFilterBy('sl')}
           >
             SL ({watchlist.filter(s => s.stopLoss && s.currentPrice <= s.stopLoss).length})
+          </button>
+          <button 
+            className={`filter-pill ${filterBy === 'near-t2' ? 'active' : ''}`}
+            onClick={() => setFilterBy('near-t2')}
+          >
+            Near T2 ({watchlist.filter(s => s.target2 && s.currentPrice && (
+              s.target1 
+                ? (s.currentPrice < s.target2 && s.currentPrice >= s.target2 - (s.target2 - s.target1) * 0.2)
+                : (s.currentPrice < s.target2 && s.currentPrice >= s.target2 * 0.98)
+            )).length})
+          </button>
+          <button 
+            className={`filter-pill ${filterBy === 'near-sl' ? 'active' : ''}`}
+            onClick={() => setFilterBy('near-sl')}
+          >
+            Near SL ({watchlist.filter(s => s.stopLoss && s.currentPrice && s.currentPrice > s.stopLoss && s.currentPrice <= s.stopLoss * 1.02).length})
           </button>
         </div>
       )}
