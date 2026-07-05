@@ -30,6 +30,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('sort');
   const [tempSortBy, setTempSortBy] = useState('none');
   const [tempFilterBy, setTempFilterBy] = useState('all');
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [guideTab, setGuideTab] = useState('overview');
 
   const uniqueTags = Array.from(new Set(watchlist.map(stock => stock.tag).filter(Boolean)));
 
@@ -510,10 +512,13 @@ export default function App() {
                 <button className="dropdown-item" onClick={() => { setShowMenu(false); exportWatchlist(); }}>
                   📤 Export
                 </button>
-                <label className="dropdown-item" style={{ cursor: 'pointer' }}>
+                <label className="dropdown-item" style={{ cursor: 'pointer', display: 'block' }}>
                   📥 Import
                   <input type="file" accept=".json" onChange={(e) => { setShowMenu(false); importWatchlist(e); }} style={{ display: 'none' }} />
                 </label>
+                <button className="dropdown-item" onClick={() => { setShowMenu(false); setShowGuideModal(true); }}>
+                  📖 Help & Guide
+                </button>
               </div>
             )}
           </div>
@@ -1051,6 +1056,123 @@ export default function App() {
               </button>
               <button className="btn btn-primary apply-btn" onClick={handleApply}>
                 APPLY
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help & Guide Modal */}
+      {showGuideModal && (
+        <div className="modal-overlay" onClick={() => setShowGuideModal(false)}>
+          <div className="modal guide-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="guide-header">
+              <h2 className="modal-title" style={{ margin: 0 }}>📖 Help & User Guide</h2>
+              <button className="close-btn-x" onClick={() => setShowGuideModal(false)}>×</button>
+            </div>
+
+            <div className="guide-tabs">
+              <button 
+                type="button" 
+                className={`guide-tab-btn ${guideTab === 'overview' ? 'active' : ''}`}
+                onClick={() => setGuideTab('overview')}
+              >
+                Overview
+              </button>
+              <button 
+                type="button" 
+                className={`guide-tab-btn ${guideTab === 'warnings' ? 'active' : ''}`}
+                onClick={() => setGuideTab('warnings')}
+              >
+                Smart Warnings
+              </button>
+              <button 
+                type="button" 
+                className={`guide-tab-btn ${guideTab === 'tags' ? 'active' : ''}`}
+                onClick={() => setGuideTab('tags')}
+              >
+                Tags
+              </button>
+              <button 
+                type="button" 
+                className={`guide-tab-btn ${guideTab === 'sync' ? 'active' : ''}`}
+                onClick={() => setGuideTab('sync')}
+              >
+                Data Sync
+              </button>
+            </div>
+
+            <div className="guide-content-box scroll-container">
+              {guideTab === 'overview' && (
+                <div className="guide-tab-pane animate-fade">
+                  <h3>📊 Tracker Dashboard Overview</h3>
+                  <div className="guide-screenshot-container">
+                    <img src="/screenshot_dashboard.png" alt="Dashboard Screenshot" className="guide-screenshot" />
+                  </div>
+                  <p>Welcome to the premium Stock Tracker dashboard. Keep track of your positions, set profit targets, and stop loss margins with ease.</p>
+                  <ul>
+                    <li><strong>Real-time LTP checks</strong>: The app checks prices every 60 seconds. You can force-refresh anytime via the menu dropdown.</li>
+                    <li><strong>Interactive Statistics</strong>: Tap the top stats cards (Profitable Positions, Negative Positions, Total Tracked) to instantly filter the list.</li>
+                    <li><strong>Expandable Stock Cards</strong>: Tap any stock card to reveal action controls. Here you can Edit target levels/tags or delete the stock from your tracker.</li>
+                  </ul>
+                </div>
+              )}
+
+              {guideTab === 'warnings' && (
+                <div className="guide-tab-pane animate-fade">
+                  <h3>🎯 Smart Warnings & Targets</h3>
+                  <div className="guide-screenshot-container">
+                    <img src="/screenshot_warnings.png" alt="Smart Warnings Screenshot" className="guide-screenshot" />
+                  </div>
+                  <p>Use horizontal filters to group stocks based on target completions or trigger alarms:</p>
+                  <ul>
+                    <li><strong>T1 & T2 Hit</strong>: Shows stocks whose live price has reached or exceeded Target 1 or Target 2.</li>
+                    <li><strong>SL Hit</strong>: Highlights positions that dropped to or below your stop loss.</li>
+                    <li><strong>Near T2 (Adaptive Target)</strong>: Highlights stocks entering the top 20% range of the Target 1 to Target 2 price gap:
+                      <div className="code-snippet-box">T2 - (T2 - T1) * 20%</div>
+                      If Target 1 is unset, it falls back to a standard 2% below Target 2 threshold.
+                    </li>
+                    <li><strong>Near SL (Stop Loss Alerter)</strong>: Highlights stocks within 2% above your Stop Loss value, alerting you before risk boundaries are breached.</li>
+                  </ul>
+                </div>
+              )}
+
+              {guideTab === 'tags' && (
+                <div className="guide-tab-pane animate-fade">
+                  <h3>🏷️ Custom Tag Filters</h3>
+                  <div className="guide-screenshot-container">
+                    <img src="/screenshot_tags.png" alt="Custom Tags Screenshot" className="guide-screenshot" />
+                  </div>
+                  <p>Organize your watchlist using custom categories like <em>Swing</em>, <em>Long Term</em>, or sector labels:</p>
+                  <ul>
+                    <li><strong>Set Tags</strong>: Enter a custom label in the "Tag" text box while adding or editing a stock.</li>
+                    <li><strong>Display Badge</strong>: Active tags show up as high-visibility colored tag badges next to the stock symbol.</li>
+                    <li><strong>Dynamic Filtering</strong>: Every unique tag automatically generates a filter capsule in the scrollable tabs bar. Tap a tag's pill to view only those tagged stocks.</li>
+                    <li><strong>Clean Cleanup</strong>: If you delete the last stock of a tag, its filter capsule automatically disappears to keep the screen clutter-free.</li>
+                  </ul>
+                </div>
+              )}
+
+              {guideTab === 'sync' && (
+                <div className="guide-tab-pane animate-fade">
+                  <h3>💾 Backup & Sync</h3>
+                  <p>Protect your custom watchlist or transfer it across devices securely using our Import/Export utilities:</p>
+                  <ul>
+                    <li><strong>Exporting</strong>: Generates and downloads a clean `.json` file containing all your stocks, buy prices, tags, targets, and parameters.</li>
+                    <li><strong>Importing (Safe Merge)</strong>: Select a previously exported `.json` file. The app reads and merges the stocks safely:
+                      <ul>
+                        <li>If a stock symbol is already in your tracker, it is **skipped** (it will NOT overwrite your current inputs).</li>
+                        <li>If a stock symbol is new, it is added to your watchlists immediately.</li>
+                      </ul>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.2rem' }}>
+              <button type="button" className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowGuideModal(false)}>
+                Got It, Thanks!
               </button>
             </div>
           </div>
