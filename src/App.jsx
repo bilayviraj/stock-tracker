@@ -12,6 +12,7 @@ export default function App() {
   const [target1, setTarget1] = useState('');
   const [target2, setTarget2] = useState('');
   const [stopLoss, setStopLoss] = useState('');
+  const [tag, setTag] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedStockPrice, setSelectedStockPrice] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -20,6 +21,7 @@ export default function App() {
   const [editTarget1, setEditTarget1] = useState('');
   const [editTarget2, setEditTarget2] = useState('');
   const [editStopLoss, setEditStopLoss] = useState('');
+  const [editTag, setEditTag] = useState('');
   const [expandedSymbol, setExpandedSymbol] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [sortBy, setSortBy] = useState('none');
@@ -28,6 +30,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('sort');
   const [tempSortBy, setTempSortBy] = useState('none');
   const [tempFilterBy, setTempFilterBy] = useState('all');
+
+  const uniqueTags = Array.from(new Set(watchlist.map(stock => stock.tag).filter(Boolean)));
 
   const fetchPricesForList = async (list) => {
     if (!list || list.length === 0) return;
@@ -96,6 +100,14 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-reset filter if active tag filter is deleted/removed
+  useEffect(() => {
+    const activeFilterExists = ['all', 't1', 't2', 'sl', 'profitable', 'losing', 'near-t2', 'near-sl'].includes(filterBy) || uniqueTags.includes(filterBy);
+    if (watchlist.length > 0 && !activeFilterExists) {
+      setFilterBy('all');
+    }
+  }, [watchlist, uniqueTags.join(','), filterBy]);
+
   const handleAddStock = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -134,7 +146,8 @@ export default function App() {
           buyPrice: buyPrice ? parseFloat(buyPrice) : null,
           target1: target1 ? parseFloat(target1) : null,
           target2: target2 ? parseFloat(target2) : null,
-          stopLoss: stopLoss ? parseFloat(stopLoss) : null
+          stopLoss: stopLoss ? parseFloat(stopLoss) : null,
+          tag: tag ? tag.trim() : null
         })
       });
 
@@ -160,6 +173,7 @@ export default function App() {
       setTarget1('');
       setTarget2('');
       setStopLoss('');
+      setTag('');
       setShowAddModal(false);
       setSelectedStockPrice(null);
     } catch (err) {
@@ -190,6 +204,7 @@ export default function App() {
     setEditTarget1(stock.target1 !== null && stock.target1 !== undefined ? stock.target1.toString() : '');
     setEditTarget2(stock.target2 !== null && stock.target2 !== undefined ? stock.target2.toString() : '');
     setEditStopLoss(stock.stopLoss !== null && stock.stopLoss !== undefined ? stock.stopLoss.toString() : '');
+    setEditTag(stock.tag || '');
     setShowEditModal(true);
   };
 
@@ -204,7 +219,8 @@ export default function App() {
           buyPrice: editBuyPrice ? parseFloat(editBuyPrice) : null,
           target1: editTarget1 ? parseFloat(editTarget1) : null,
           target2: editTarget2 ? parseFloat(editTarget2) : null,
-          stopLoss: editStopLoss ? parseFloat(editStopLoss) : null
+          stopLoss: editStopLoss ? parseFloat(editStopLoss) : null,
+          tag: editTag ? editTag.trim() : null
         })
       });
 
@@ -218,7 +234,8 @@ export default function App() {
             buyPrice: updatedStock.buyPrice,
             target1: updatedStock.target1,
             target2: updatedStock.target2,
-            stopLoss: updatedStock.stopLoss
+            stopLoss: updatedStock.stopLoss,
+            tag: updatedStock.tag
           };
         }
         return item;
@@ -388,6 +405,8 @@ export default function App() {
       ));
     } else if (filterBy === 'near-sl') {
       list = list.filter(stock => stock.stopLoss && stock.currentPrice && stock.currentPrice > stock.stopLoss && stock.currentPrice <= stock.stopLoss * 1.02);
+    } else if (uniqueTags.includes(filterBy)) {
+      list = list.filter(stock => stock.tag === filterBy);
     }
 
     // 2. Sorting
@@ -578,6 +597,16 @@ export default function App() {
           >
             Near SL ({watchlist.filter(s => s.stopLoss && s.currentPrice && s.currentPrice > s.stopLoss && s.currentPrice <= s.stopLoss * 1.02).length})
           </button>
+          
+          {uniqueTags.map(tagName => (
+            <button 
+              key={tagName}
+              className={`filter-pill ${filterBy === tagName ? 'active' : ''}`}
+              onClick={() => setFilterBy(tagName)}
+            >
+              {tagName} ({watchlist.filter(s => s.tag === tagName).length})
+            </button>
+          ))}
         </div>
       )}
 
@@ -634,6 +663,7 @@ export default function App() {
                       <div className="sym-container">
                         <span className="sym">{stock.symbol.split('.')[0]}</span>
                         <span className="exchange-badge">{stock.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}</span>
+                        {stock.tag && <span className="tag-badge">{stock.tag}</span>}
                       </div>
                       <div className="name" title={stock.name}>{stock.name}</div>
                     </div>
@@ -810,6 +840,17 @@ export default function App() {
                   disabled={loading}
                 />
               </div>
+              <div className="form-group">
+                <label>Tag (e.g. Swing, Long Term)</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Optional custom tag"
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
 
               {errorMsg && (
                 <div style={{ color: 'var(--loss)', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 600 }}>
@@ -895,6 +936,16 @@ export default function App() {
                   placeholder="Loss limit price"
                   value={editStopLoss}
                   onChange={(e) => setEditStopLoss(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Tag (e.g. Swing, Long Term)</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Optional custom tag"
+                  value={editTag}
+                  onChange={(e) => setEditTag(e.target.value)}
                 />
               </div>
 

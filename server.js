@@ -291,7 +291,7 @@ app.get('/api/watchlist', async (req, res) => {
 
 // Add stock to watchlist in Vercel KV or Local Memory
 app.post('/api/watchlist', async (req, res) => {
-  const { symbol, name, buyPrice, target1, target2, stopLoss } = req.body;
+  const { symbol, name, buyPrice, target1, target2, stopLoss, tag } = req.body;
   if (!symbol || !name) {
     return res.status(400).json({ error: 'Symbol and name are required' });
   }
@@ -315,7 +315,8 @@ app.post('/api/watchlist', async (req, res) => {
       buyPrice: buyPrice ? parseFloat(buyPrice) : null,
       target1: target1 ? parseFloat(target1) : null,
       target2: target2 ? parseFloat(target2) : null,
-      stopLoss: stopLoss ? parseFloat(stopLoss) : null
+      stopLoss: stopLoss ? parseFloat(stopLoss) : null,
+      tag: tag ? tag.trim() : null
     };
 
     list.push(newStock);
@@ -334,7 +335,7 @@ app.post('/api/watchlist', async (req, res) => {
 // Update stock in watchlist in Vercel KV or Local Memory
 app.put('/api/watchlist/:symbol', async (req, res) => {
   const { symbol } = req.params;
-  const { buyPrice, target1, target2, stopLoss } = req.body;
+  const { buyPrice, target1, target2, stopLoss, tag } = req.body;
 
   try {
     const cleanSymbol = symbol.toUpperCase();
@@ -353,7 +354,8 @@ app.put('/api/watchlist/:symbol', async (req, res) => {
           buyPrice: buyPrice !== undefined && buyPrice !== null ? parseFloat(buyPrice) : null,
           target1: target1 !== undefined && target1 !== null ? parseFloat(target1) : null,
           target2: target2 !== undefined && target2 !== null ? parseFloat(target2) : null,
-          stopLoss: stopLoss !== undefined && stopLoss !== null ? parseFloat(stopLoss) : null
+          stopLoss: stopLoss !== undefined && stopLoss !== null ? parseFloat(stopLoss) : null,
+          tag: tag !== undefined && tag !== null ? tag.trim() : null
         };
         return updatedStock;
       }
