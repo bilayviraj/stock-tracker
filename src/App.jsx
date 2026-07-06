@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const API_BASE = '/api';
 
@@ -32,6 +32,7 @@ export default function App() {
   const [tempFilterBy, setTempFilterBy] = useState('all');
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guideTab, setGuideTab] = useState('overview');
+  const menuRef = useRef(null);
 
   const uniqueTags = Array.from(new Set(watchlist.map(stock => stock.tag).filter(Boolean)));
 
@@ -109,6 +110,24 @@ export default function App() {
       setFilterBy('all');
     }
   }, [watchlist, uniqueTags.join(','), filterBy]);
+
+  // Click outside options menu to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showMenu]);
 
   const handleAddStock = async (e) => {
     e.preventDefault();
@@ -500,7 +519,7 @@ export default function App() {
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
           </button>
-          <div className="menu-container" style={{ position: 'relative' }}>
+          <div className="menu-container" ref={menuRef} style={{ position: 'relative' }}>
             <button className="btn btn-icon btn-secondary" onClick={() => setShowMenu(!showMenu)} title="Menu">
               ⋮
             </button>
@@ -675,11 +694,15 @@ export default function App() {
 
                     <div className="stock-row-right-group">
                       <span className="price">₹{stock.currentPrice?.toFixed(2) || 'N/A'}</span>
-                      {stock.changePercent !== undefined && (
+                      {pctChangeFromBuy !== null ? (
+                        <span className={`returns ${pctChangeFromBuy >= 0 ? 'up' : 'down'}`}>
+                          {pctChangeFromBuy >= 0 ? '▲' : '▼'} {Math.abs(pctChangeFromBuy).toFixed(2)}%
+                        </span>
+                      ) : stock.changePercent !== undefined ? (
                         <span className={`returns ${stock.change >= 0 ? 'up' : 'down'}`}>
                           {stock.change >= 0 ? '▲' : '▼'} {Math.abs(stock.changePercent).toFixed(2)}%
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
@@ -690,10 +713,10 @@ export default function App() {
                         {stock.buyPrice && (
                           <>
                             <span className="buy-val">Buy: ₹{stock.buyPrice.toFixed(2)}</span>
-                            {pctChangeFromBuy !== null && absPnl !== null && (
+                            {stock.changePercent !== undefined && stock.change !== undefined && (
                               <span className="pnl-val">
-                                P&L: <span style={{ color: pctChangeFromBuy >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
-                                  {pctChangeFromBuy >= 0 ? '+' : ''}{pctChangeFromBuy.toFixed(2)}% ({pctChangeFromBuy >= 0 ? '+' : ''}₹{absPnl.toFixed(2)})
+                                P&L: <span style={{ color: stock.change >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
+                                  {stock.change >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}% ({stock.change >= 0 ? '+' : ''}₹{stock.change.toFixed(2)})
                                 </span>
                               </span>
                             )}
