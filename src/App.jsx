@@ -24,11 +24,11 @@ export default function App() {
   const [editTag, setEditTag] = useState('');
   const [expandedSymbol, setExpandedSymbol] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
-  const [sortBy, setSortBy] = useState('none');
+  const [sortBy, setSortBy] = useState('alpha-asc');
   const [filterBy, setFilterBy] = useState('all');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeTab, setActiveTab] = useState('sort');
-  const [tempSortBy, setTempSortBy] = useState('none');
+  const [tempSortBy, setTempSortBy] = useState('alpha-asc');
   const [tempFilterBy, setTempFilterBy] = useState('all');
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guideTab, setGuideTab] = useState('overview');
@@ -422,7 +422,7 @@ export default function App() {
     } else if (filterBy === 'near-t2') {
       list = list.filter(stock => stock.target2 && stock.currentPrice && (
         stock.target1 
-          ? (stock.currentPrice < stock.target2 && stock.currentPrice >= stock.target2 - (stock.target2 - stock.target1) * 0.2)
+          ? (stock.currentPrice < stock.target2 && stock.currentPrice >= stock.target2 - (stock.target2 - stock.target1) * 0.4)
           : (stock.currentPrice < stock.target2 && stock.currentPrice >= stock.target2 * 0.98)
       ));
     } else if (filterBy === 'near-sl') {
@@ -1152,8 +1152,8 @@ export default function App() {
                   <ul>
                     <li><strong>T1 & T2 Hit</strong>: Shows stocks whose live price has reached or exceeded Target 1 or Target 2.</li>
                     <li><strong>SL Hit</strong>: Highlights positions that dropped to or below your stop loss.</li>
-                    <li><strong>Near T2 (Adaptive Target)</strong>: Highlights stocks entering the top 20% range of the Target 1 to Target 2 price gap:
-                      <div className="code-snippet-box">T2 - (T2 - T1) * 20%</div>
+                    <li><strong>Near T2 (Adaptive Target)</strong>: Highlights stocks entering the top 40% range of the Target 1 to Target 2 price gap:
+                      <div className="code-snippet-box">T2 - (T2 - T1) * 40%</div>
                       If Target 1 is unset, it falls back to a standard 2% below Target 2 threshold.
                     </li>
                     <li><strong>Near SL (Stop Loss Alerter)</strong>: Highlights stocks within 2% above your Stop Loss value, alerting you before risk boundaries are breached.</li>
