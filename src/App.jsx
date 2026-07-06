@@ -1084,7 +1084,7 @@ export default function App() {
                 className={`guide-tab-btn ${guideTab === 'warnings' ? 'active' : ''}`}
                 onClick={() => setGuideTab('warnings')}
               >
-                Smart Warnings
+                Warnings
               </button>
               <button 
                 type="button" 
@@ -1098,7 +1098,7 @@ export default function App() {
                 className={`guide-tab-btn ${guideTab === 'sync' ? 'active' : ''}`}
                 onClick={() => setGuideTab('sync')}
               >
-                Data Sync
+                Sync
               </button>
             </div>
 

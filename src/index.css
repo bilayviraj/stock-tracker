@@ -247,6 +247,9 @@ header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  row-gap: 4px;
+  max-width: 100%;
 }
 
 .stock-row-left-group .sym {
@@ -278,6 +281,12 @@ header {
   color: #a5b4fc;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .stock-row-left-group .name {
@@ -343,7 +352,8 @@ header {
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
-  flex: 1;
+  flex: 0 0 auto;
+  text-align: right;
 }
 
 .stock-row-right-group .price {
@@ -1168,6 +1178,12 @@ header {
   gap: 2px;
   overflow-x: auto;
   align-items: center;
+  scrollbar-width: none; /* Hide standard Firefox scrollbars */
+  -ms-overflow-style: none; /* Hide IE scrollbars */
+}
+
+.guide-tabs::-webkit-scrollbar {
+  display: none; /* Hide Webkit scrollbars completely */
 }
 
 .guide-tab-btn {
@@ -1193,6 +1209,20 @@ header {
   background: var(--primary-color);
   color: #ffffff;
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+/* Mobile responsive scaling for Guide switcher */
+@media (max-width: 480px) {
+  .guide-tabs {
+    padding: 3px;
+    gap: 1px;
+    border-radius: 24px;
+  }
+  .guide-tab-btn {
+    padding: 0.45rem 0.35rem;
+    font-size: 0.72rem;
+    border-radius: 20px;
+  }
 }
 
 .guide-screenshot-container {
