@@ -313,8 +313,8 @@ export default function App() {
       alert("Watchlist is empty. Add some stocks first before exporting.");
       return;
     }
-    const cleanWatchlist = watchlist.map(({ symbol, name, buyPrice, target1, target2, stopLoss }) => ({
-      symbol, name, buyPrice, target1, target2, stopLoss
+    const cleanWatchlist = watchlist.map(({ symbol, name, buyPrice, target1, target2, stopLoss, tag }) => ({
+      symbol, name, buyPrice, target1, target2, stopLoss, tag
     }));
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanWatchlist, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -354,7 +354,8 @@ export default function App() {
                       buyPrice: newItem.buyPrice ? parseFloat(newItem.buyPrice) : null,
                       target1: newItem.target1 ? parseFloat(newItem.target1) : null,
                       target2: newItem.target2 ? parseFloat(newItem.target2) : null,
-                      stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null
+                      stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null,
+                      tag: newItem.tag || ''
                     })
                   });
                   importCount++;
