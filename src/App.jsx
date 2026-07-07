@@ -33,6 +33,7 @@ export default function App() {
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guideTab, setGuideTab] = useState('overview');
   const menuRef = useRef(null);
+  const [watchlistSearch, setWatchlistSearch] = useState('');
 
   const uniqueTags = Array.from(new Set(watchlist.map(stock => stock.tag).filter(Boolean)));
 
@@ -105,7 +106,7 @@ export default function App() {
 
   // Auto-reset filter if active tag filter is deleted/removed
   useEffect(() => {
-    const activeFilterExists = ['all', 't1', 't2', 'sl', 'profitable', 'losing', 'near-t2', 'near-sl'].includes(filterBy) || uniqueTags.includes(filterBy);
+    const activeFilterExists = ['all', 't1', 't2', 'sl', 'profitable', 'losing', 'near-t1', 'near-t2', 'near-sl'].includes(filterBy) || uniqueTags.includes(filterBy);
     if (watchlist.length > 0 && !activeFilterExists) {
       setFilterBy('all');
     }
@@ -408,7 +409,16 @@ export default function App() {
   const processedWatchlist = (() => {
     let list = [...watchlist];
 
-    // 1. Filtering
+    // 1. Filtering by search query (symbol or name)
+    if (watchlistSearch.trim()) {
+      const q = watchlistSearch.toLowerCase().trim();
+      list = list.filter(stock => 
+        stock.symbol.toLowerCase().includes(q) || 
+        (stock.name && stock.name.toLowerCase().includes(q))
+      );
+    }
+
+    // 2. Filtering
     if (filterBy === 't1') {
       list = list.filter(stock => stock.target1 && stock.currentPrice >= stock.target1);
     } else if (filterBy === 't2') {
@@ -419,6 +429,12 @@ export default function App() {
       list = list.filter(stock => stock.buyPrice && stock.currentPrice && stock.currentPrice >= stock.buyPrice);
     } else if (filterBy === 'losing') {
       list = list.filter(stock => stock.buyPrice && stock.currentPrice && stock.currentPrice < stock.buyPrice);
+    } else if (filterBy === 'near-t1') {
+      list = list.filter(stock => stock.target1 && stock.currentPrice && (
+        stock.buyPrice 
+          ? (stock.currentPrice < stock.target1 && stock.currentPrice >= stock.target1 - (stock.target1 - stock.buyPrice) * 0.2)
+          : (stock.currentPrice < stock.target1 && stock.currentPrice >= stock.target1 * 0.98)
+      ));
     } else if (filterBy === 'near-t2') {
       list = list.filter(stock => stock.target2 && stock.currentPrice && (
         stock.target1 
@@ -579,6 +595,28 @@ export default function App() {
         </div>
       </section>
 
+      {/* Watchlist Search Bar */}
+      {watchlist.length > 0 && (
+        <div className="watchlist-search-container">
+          <svg className="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            className="watchlist-search-input"
+            placeholder="Search watchlist by name or symbol..."
+            value={watchlistSearch}
+            onChange={(e) => setWatchlistSearch(e.target.value)}
+          />
+          {watchlistSearch && (
+            <button className="search-clear-btn" onClick={() => setWatchlistSearch('')} title="Clear Search">
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Filter Tabs / Pills */}
       {watchlist.length > 0 && (
         <div className="filter-tabs-bar">
@@ -589,16 +627,10 @@ export default function App() {
             All ({watchlist.length})
           </button>
           <button 
-            className={`filter-pill ${filterBy === 't1' ? 'active' : ''}`}
-            onClick={() => setFilterBy('t1')}
+            className={`filter-pill ${filterBy === 'near-sl' ? 'active' : ''}`}
+            onClick={() => setFilterBy('near-sl')}
           >
-            T1 ({watchlist.filter(s => s.target1 && s.currentPrice >= s.target1).length})
-          </button>
-          <button 
-            className={`filter-pill ${filterBy === 't2' ? 'active' : ''}`}
-            onClick={() => setFilterBy('t2')}
-          >
-            T2 ({watchlist.filter(s => s.target2 && s.currentPrice >= s.target2).length})
+            Near SL ({watchlist.filter(s => s.stopLoss && s.currentPrice && s.currentPrice > s.stopLoss && s.currentPrice <= s.stopLoss * 1.02).length})
           </button>
           <button 
             className={`filter-pill ${filterBy === 'sl' ? 'active' : ''}`}
@@ -607,20 +639,36 @@ export default function App() {
             SL ({watchlist.filter(s => s.stopLoss && s.currentPrice <= s.stopLoss).length})
           </button>
           <button 
+            className={`filter-pill ${filterBy === 'near-t1' ? 'active' : ''}`}
+            onClick={() => setFilterBy('near-t1')}
+          >
+            Near T1 ({watchlist.filter(s => s.target1 && s.currentPrice && (
+              s.buyPrice 
+                ? (s.currentPrice < s.target1 && s.currentPrice >= s.target1 - (s.target1 - s.buyPrice) * 0.2)
+                : (s.currentPrice < s.target1 && s.currentPrice >= s.target1 * 0.98)
+            )).length})
+          </button>
+          <button 
+            className={`filter-pill ${filterBy === 't1' ? 'active' : ''}`}
+            onClick={() => setFilterBy('t1')}
+          >
+            T1 ({watchlist.filter(s => s.target1 && s.currentPrice >= s.target1).length})
+          </button>
+          <button 
             className={`filter-pill ${filterBy === 'near-t2' ? 'active' : ''}`}
             onClick={() => setFilterBy('near-t2')}
           >
             Near T2 ({watchlist.filter(s => s.target2 && s.currentPrice && (
               s.target1 
-                ? (s.currentPrice < s.target2 && s.currentPrice >= s.target2 - (s.target2 - s.target1) * 0.2)
+                ? (s.currentPrice < s.target2 && s.currentPrice >= s.target2 - (s.target2 - s.target1) * 0.4)
                 : (s.currentPrice < s.target2 && s.currentPrice >= s.target2 * 0.98)
             )).length})
           </button>
           <button 
-            className={`filter-pill ${filterBy === 'near-sl' ? 'active' : ''}`}
-            onClick={() => setFilterBy('near-sl')}
+            className={`filter-pill ${filterBy === 't2' ? 'active' : ''}`}
+            onClick={() => setFilterBy('t2')}
           >
-            Near SL ({watchlist.filter(s => s.stopLoss && s.currentPrice && s.currentPrice > s.stopLoss && s.currentPrice <= s.stopLoss * 1.02).length})
+            T2 ({watchlist.filter(s => s.target2 && s.currentPrice >= s.target2).length})
           </button>
           
           {uniqueTags.map(tagName => (
