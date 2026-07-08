@@ -36,6 +36,7 @@ export default function App() {
   const [watchlistSearch, setWatchlistSearch] = useState('');
 
   const uniqueTags = Array.from(new Set(watchlist.map(stock => stock.tag).filter(Boolean)));
+  const uniqueSectors = Array.from(new Set(watchlist.map(stock => stock.sector).filter(Boolean)));
 
   const fetchPricesForList = async (list) => {
     if (!list || list.length === 0) return;
@@ -55,7 +56,8 @@ export default function App() {
               name: match.name,
               currentPrice: match.price,
               changePercent: match.changePercent,
-              change: match.change
+              change: match.change,
+              sector: match.sector || item.sector
             };
           }
           return item;
@@ -104,13 +106,13 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-reset filter if active tag filter is deleted/removed
+  // Auto-reset filter if active tag/sector filter is deleted/removed
   useEffect(() => {
-    const activeFilterExists = ['all', 't1', 't2', 'sl', 'profitable', 'losing', 'near-t1', 'near-t2', 'near-sl'].includes(filterBy) || uniqueTags.includes(filterBy);
+    const activeFilterExists = ['all', 't1', 't2', 'sl', 'profitable', 'losing', 'near-t1', 'near-t2', 'near-sl'].includes(filterBy) || uniqueTags.includes(filterBy) || uniqueSectors.includes(filterBy);
     if (watchlist.length > 0 && !activeFilterExists) {
       setFilterBy('all');
     }
-  }, [watchlist, uniqueTags.join(','), filterBy]);
+  }, [watchlist, uniqueTags.join(','), uniqueSectors.join(','), filterBy]);
 
   // Click outside options menu to close it
   useEffect(() => {
@@ -169,7 +171,8 @@ export default function App() {
           target1: target1 ? parseFloat(target1) : null,
           target2: target2 ? parseFloat(target2) : null,
           stopLoss: stopLoss ? parseFloat(stopLoss) : null,
-          tag: tag ? tag.trim() : null
+          tag: tag ? tag.trim() : null,
+          sector: data.sector || null
         })
       });
 
@@ -184,7 +187,8 @@ export default function App() {
         ...dbStock,
         currentPrice: data.price,
         changePercent: data.changePercent,
-        change: data.change
+        change: data.change,
+        sector: data.sector || dbStock.sector
       };
 
       setWatchlist(prev => [...prev, newStock]);
@@ -314,8 +318,8 @@ export default function App() {
       alert("Watchlist is empty. Add some stocks first before exporting.");
       return;
     }
-    const cleanWatchlist = watchlist.map(({ symbol, name, buyPrice, target1, target2, stopLoss, tag }) => ({
-      symbol, name, buyPrice, target1, target2, stopLoss, tag
+    const cleanWatchlist = watchlist.map(({ symbol, name, buyPrice, target1, target2, stopLoss, tag, sector }) => ({
+      symbol, name, buyPrice, target1, target2, stopLoss, tag, sector
     }));
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanWatchlist, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -356,7 +360,8 @@ export default function App() {
                       target1: newItem.target1 ? parseFloat(newItem.target1) : null,
                       target2: newItem.target2 ? parseFloat(newItem.target2) : null,
                       stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null,
-                      tag: newItem.tag || ''
+                      tag: newItem.tag || '',
+                      sector: newItem.sector || ''
                     })
                   });
                   importCount++;
@@ -445,6 +450,8 @@ export default function App() {
       list = list.filter(stock => stock.stopLoss && stock.currentPrice && stock.currentPrice > stock.stopLoss && stock.currentPrice <= stock.stopLoss * 1.02);
     } else if (uniqueTags.includes(filterBy)) {
       list = list.filter(stock => stock.tag === filterBy);
+    } else if (uniqueSectors.includes(filterBy)) {
+      list = list.filter(stock => stock.sector === filterBy);
     }
 
     // 2. Sorting
@@ -680,6 +687,16 @@ export default function App() {
               {tagName} ({watchlist.filter(s => s.tag === tagName).length})
             </button>
           ))}
+
+          {uniqueSectors.map(sectorName => (
+            <button 
+              key={sectorName}
+              className={`filter-pill sector-pill-btn ${filterBy === sectorName ? 'active' : ''}`}
+              onClick={() => setFilterBy(sectorName)}
+            >
+              📁 {sectorName} ({watchlist.filter(s => s.sector === sectorName).length})
+            </button>
+          ))}
         </div>
       )}
 
@@ -737,6 +754,7 @@ export default function App() {
                         <span className="sym">{stock.symbol.split('.')[0]}</span>
                         <span className="exchange-badge">{stock.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}</span>
                         {stock.tag && <span className="tag-badge">{stock.tag}</span>}
+                        {stock.sector && <span className="sector-badge">{stock.sector}</span>}
                       </div>
                       <div className="name" title={stock.name}>{stock.name}</div>
                     </div>

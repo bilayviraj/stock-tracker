@@ -34,6 +34,30 @@ if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
 }
 
 
+async function fetchStockSector(searchSymbol) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(searchSymbol)}`;
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Origin': 'https://finance.yahoo.com',
+        'Referer': 'https://finance.yahoo.com/'
+      }
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.quotes && data.quotes.length > 0) {
+      const match = data.quotes.find(q => q.symbol.toUpperCase() === searchSymbol.toUpperCase()) || data.quotes[0];
+      return match.sector || match.sectorDisp || null;
+    }
+    return null;
+  } catch (err) {
+    console.error(`Error fetching sector for ${searchSymbol}:`, err);
+    return null;
+  }
+}
+
 // Helper function to fetch stock data from Yahoo Finance chart API
 async function fetchStockQuote(symbol) {
   let searchSymbol = symbol.toUpperCase();
@@ -66,6 +90,9 @@ async function fetchStockQuote(symbol) {
   const prevClose = meta.previousClose || meta.chartPreviousClose;
   const change = price - prevClose;
   const changePercent = prevClose ? (change / prevClose) * 100 : 0;
+  
+  // Fetch sector in parallel/sequence
+  const sector = await fetchStockSector(searchSymbol);
 
   return {
     symbol: meta.symbol,
@@ -74,7 +101,8 @@ async function fetchStockQuote(symbol) {
     change: change,
     changePercent: changePercent,
     currency: meta.currency,
-    exchange: meta.fullExchangeName
+    exchange: meta.fullExchangeName,
+    sector: sector
   };
 }
 
@@ -289,9 +317,8 @@ app.get('/api/watchlist', async (req, res) => {
   }
 });
 
-// Add stock to watchlist in Vercel KV or Local Memory
 app.post('/api/watchlist', async (req, res) => {
-  const { symbol, name, buyPrice, target1, target2, stopLoss, tag } = req.body;
+  const { symbol, name, buyPrice, target1, target2, stopLoss, tag, sector } = req.body;
   if (!symbol || !name) {
     return res.status(400).json({ error: 'Symbol and name are required' });
   }
@@ -316,7 +343,8 @@ app.post('/api/watchlist', async (req, res) => {
       target1: target1 ? parseFloat(target1) : null,
       target2: target2 ? parseFloat(target2) : null,
       stopLoss: stopLoss ? parseFloat(stopLoss) : null,
-      tag: tag ? tag.trim() : null
+      tag: tag ? tag.trim() : null,
+      sector: sector || null
     };
 
     list.push(newStock);
@@ -332,10 +360,9 @@ app.post('/api/watchlist', async (req, res) => {
   }
 });
 
-// Update stock in watchlist in Vercel KV or Local Memory
 app.put('/api/watchlist/:symbol', async (req, res) => {
   const { symbol } = req.params;
-  const { buyPrice, target1, target2, stopLoss, tag } = req.body;
+  const { buyPrice, target1, target2, stopLoss, tag, sector } = req.body;
 
   try {
     const cleanSymbol = symbol.toUpperCase();
@@ -355,7 +382,8 @@ app.put('/api/watchlist/:symbol', async (req, res) => {
           target1: target1 !== undefined && target1 !== null ? parseFloat(target1) : null,
           target2: target2 !== undefined && target2 !== null ? parseFloat(target2) : null,
           stopLoss: stopLoss !== undefined && stopLoss !== null ? parseFloat(stopLoss) : null,
-          tag: tag !== undefined && tag !== null ? tag.trim() : null
+          tag: tag !== undefined && tag !== null ? tag.trim() : null,
+          sector: sector !== undefined && sector !== null ? sector : item.sector
         };
         return updatedStock;
       }
