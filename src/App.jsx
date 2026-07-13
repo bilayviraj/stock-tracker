@@ -738,13 +738,13 @@ export default function App() {
             className={`dashboard-view-tab ${dashboardView === 'watchlist' ? 'active' : ''}`}
             onClick={() => setDashboardView('watchlist')}
           >
-            📊 Active Watchlist ({watchlist.length})
+            📊 Active ({watchlist.length})
           </button>
           <button 
             className={`dashboard-view-tab ${dashboardView === 'sold' ? 'active' : ''}`}
             onClick={() => setDashboardView('sold')}
           >
-            💰 Sell History ({sellHistory.length})
+            💰 Sold ({sellHistory.length})
           </button>
         </div>
       </div>
