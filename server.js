@@ -8,7 +8,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5050;
 
 app.use(cors());
 app.use(express.json());
@@ -17,6 +17,7 @@ app.use(express.json());
 let kv;
 let useLocalMemory = false;
 let localWatchlist = [];
+let localSellHistory = [];
 
 if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
   console.warn("WARNING: KV_REST_API_URL or KV_REST_API_TOKEN is not defined! Falling back to local in-memory storage.");
@@ -33,30 +34,6 @@ if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
   }
 }
 
-
-async function fetchStockSector(searchSymbol) {
-  try {
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(searchSymbol)}`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Origin': 'https://finance.yahoo.com',
-        'Referer': 'https://finance.yahoo.com/'
-      }
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (data.quotes && data.quotes.length > 0) {
-      const match = data.quotes.find(q => q.symbol.toUpperCase() === searchSymbol.toUpperCase()) || data.quotes[0];
-      return match.sector || match.sectorDisp || null;
-    }
-    return null;
-  } catch (err) {
-    console.error(`Error fetching sector for ${searchSymbol}:`, err);
-    return null;
-  }
-}
 
 // Helper function to fetch stock data from Yahoo Finance chart API
 async function fetchStockQuote(symbol) {
@@ -90,9 +67,6 @@ async function fetchStockQuote(symbol) {
   const prevClose = meta.previousClose || meta.chartPreviousClose;
   const change = price - prevClose;
   const changePercent = prevClose ? (change / prevClose) * 100 : 0;
-  
-  // Fetch sector in parallel/sequence
-  const sector = await fetchStockSector(searchSymbol);
 
   return {
     symbol: meta.symbol,
@@ -101,8 +75,7 @@ async function fetchStockQuote(symbol) {
     change: change,
     changePercent: changePercent,
     currency: meta.currency,
-    exchange: meta.fullExchangeName,
-    sector: sector
+    exchange: meta.fullExchangeName
   };
 }
 
@@ -271,7 +244,7 @@ app.get('/api/watchlist', async (req, res) => {
     } else {
       list = await kv.get('watchlist') || [];
     }
-    
+
     // Normalize and de-duplicate symbols (ensure they end in .NS or .BO)
     let needsUpdate = false;
     const seen = new Set();
@@ -318,7 +291,7 @@ app.get('/api/watchlist', async (req, res) => {
 });
 
 app.post('/api/watchlist', async (req, res) => {
-  const { symbol, name, buyPrice, target1, target2, stopLoss, tag, sector } = req.body;
+  const { symbol, name, buyPrice, target1, target2, stopLoss, tag } = req.body;
   if (!symbol || !name) {
     return res.status(400).json({ error: 'Symbol and name are required' });
   }
@@ -331,7 +304,7 @@ app.post('/api/watchlist', async (req, res) => {
     } else {
       list = await kv.get('watchlist') || [];
     }
-    
+
     if (list.some(item => item.symbol === cleanSymbol)) {
       return res.status(400).json({ error: 'Stock already in watchlist' });
     }
@@ -343,8 +316,7 @@ app.post('/api/watchlist', async (req, res) => {
       target1: target1 ? parseFloat(target1) : null,
       target2: target2 ? parseFloat(target2) : null,
       stopLoss: stopLoss ? parseFloat(stopLoss) : null,
-      tag: tag ? tag.trim() : null,
-      sector: sector || null
+      tag: tag ? tag.trim() : null
     };
 
     list.push(newStock);
@@ -362,7 +334,7 @@ app.post('/api/watchlist', async (req, res) => {
 
 app.put('/api/watchlist/:symbol', async (req, res) => {
   const { symbol } = req.params;
-  const { buyPrice, target1, target2, stopLoss, tag, sector } = req.body;
+  const { buyPrice, target1, target2, stopLoss, tag } = req.body;
 
   try {
     const cleanSymbol = symbol.toUpperCase();
@@ -382,8 +354,7 @@ app.put('/api/watchlist/:symbol', async (req, res) => {
           target1: target1 !== undefined && target1 !== null ? parseFloat(target1) : null,
           target2: target2 !== undefined && target2 !== null ? parseFloat(target2) : null,
           stopLoss: stopLoss !== undefined && stopLoss !== null ? parseFloat(stopLoss) : null,
-          tag: tag !== undefined && tag !== null ? tag.trim() : null,
-          sector: sector !== undefined && sector !== null ? sector : item.sector
+          tag: tag !== undefined && tag !== null ? tag.trim() : null
         };
         return updatedStock;
       }
@@ -435,6 +406,84 @@ app.delete('/api/watchlist/:symbol', async (req, res) => {
   } catch (error) {
     console.error('Error deleting stock:', error);
     res.status(500).json({ error: 'Failed to delete stock', details: error.message });
+  }
+});
+
+// GET sold history
+app.get('/api/sold', async (req, res) => {
+  try {
+    let list;
+    if (useLocalMemory) {
+      list = localSellHistory;
+    } else {
+      list = await kv.get('sellHistory') || [];
+    }
+    res.json(list);
+  } catch (error) {
+    console.error('Error fetching sell history:', error);
+    res.status(500).json({ error: 'Failed to fetch sell history', details: error.message });
+  }
+});
+
+// POST sold stock entry
+app.post('/api/sold', async (req, res) => {
+  const { symbol, name, buyPrice, sellPrice, sellDate, tag } = req.body;
+  if (!symbol || !name || !sellPrice) {
+    return res.status(400).json({ error: 'Symbol, name, and sellPrice are required' });
+  }
+  try {
+    let list;
+    if (useLocalMemory) {
+      list = localSellHistory;
+    } else {
+      list = await kv.get('sellHistory') || [];
+    }
+    const entry = {
+      id: Date.now().toString(),
+      symbol: symbol.toUpperCase(),
+      name,
+      buyPrice: buyPrice ? parseFloat(buyPrice) : null,
+      sellPrice: sellPrice ? parseFloat(sellPrice) : null,
+      sellDate: sellDate || new Date().toISOString().split('T')[0],
+      tag: tag ? tag.trim() : null
+    };
+    list.push(entry);
+    if (useLocalMemory) {
+      localSellHistory = list;
+    } else {
+      await kv.set('sellHistory', list);
+    }
+    res.status(201).json(entry);
+  } catch (error) {
+    console.error('Error saving sold stock:', error);
+    res.status(500).json({ error: 'Failed to save sold stock', details: error.message });
+  }
+});
+
+// DELETE sold stock entry
+app.delete('/api/sold/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    let list;
+    if (useLocalMemory) {
+      list = localSellHistory;
+    } else {
+      list = await kv.get('sellHistory') || [];
+    }
+    const initialLength = list.length;
+    list = list.filter(item => item.id !== id);
+    if (list.length === initialLength) {
+      return res.status(404).json({ error: 'Sold stock record not found' });
+    }
+    if (useLocalMemory) {
+      localSellHistory = list;
+    } else {
+      await kv.set('sellHistory', list);
+    }
+    res.json({ message: 'Sold record deleted successfully', id });
+  } catch (error) {
+    console.error('Error deleting sold stock:', error);
+    res.status(500).json({ error: 'Failed to delete sold record', details: error.message });
   }
 });
 

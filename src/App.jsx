@@ -35,8 +35,50 @@ export default function App() {
   const menuRef = useRef(null);
   const [watchlistSearch, setWatchlistSearch] = useState('');
 
+  // Sell History and View Switcher states
+  const [sellHistory, setSellHistory] = useState([]);
+  const [dashboardView, setDashboardView] = useState('watchlist');
+  const [showSellModal, setShowSellModal] = useState(false);
+  const [sellStockItem, setSellStockItem] = useState(null);
+  const [sellPrice, setSellPrice] = useState('');
+  const [sellDate, setSellDate] = useState('');
+
   const uniqueTags = Array.from(new Set(watchlist.map(stock => stock.tag).filter(Boolean)));
-  const uniqueSectors = Array.from(new Set(watchlist.map(stock => stock.sector).filter(Boolean)));
+
+  const realizedStats = (() => {
+    let totalPnl = 0;
+    let profitCount = 0;
+    let totalPct = 0;
+    let validPctCount = 0;
+    let totalBuyValue = 0;
+    let totalSellValue = 0;
+
+    for (const item of sellHistory) {
+      if (item.buyPrice && item.sellPrice) {
+        const pnl = item.sellPrice - item.buyPrice;
+        totalPnl += pnl;
+        totalBuyValue += item.buyPrice;
+        totalSellValue += item.sellPrice;
+        if (pnl >= 0) profitCount++;
+
+        const pct = (pnl / item.buyPrice) * 100;
+        totalPct += pct;
+        validPctCount++;
+      }
+    }
+
+    const avgPct = validPctCount > 0 ? totalPct / validPctCount : 0;
+    const profitRate = sellHistory.length > 0 ? (profitCount / sellHistory.length) * 100 : 0;
+    const totalPnlPct = totalBuyValue > 0 ? ((totalSellValue - totalBuyValue) / totalBuyValue) * 100 : 0;
+
+    return {
+      totalPnl,
+      totalPnlPct,
+      profitCount,
+      avgPct,
+      profitRate
+    };
+  })();
 
   const fetchPricesForList = async (list) => {
     if (!list || list.length === 0) return;
@@ -56,8 +98,7 @@ export default function App() {
               name: match.name,
               currentPrice: match.price,
               changePercent: match.changePercent,
-              change: match.change,
-              sector: match.sector || item.sector
+              change: match.change
             };
           }
           return item;
@@ -94,6 +135,16 @@ export default function App() {
         }
       } catch (error) {
         console.error('Failed to load watchlist from DB:', error);
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/sold`);
+        if (response.ok) {
+          const list = await response.json();
+          setSellHistory(list);
+        }
+      } catch (error) {
+        console.error('Failed to load sell history from DB:', error);
       } finally {
         setLoading(false);
         setIsInitialLoad(false);
@@ -106,13 +157,13 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-reset filter if active tag/sector filter is deleted/removed
+  // Auto-reset filter if active tag filter is deleted/removed
   useEffect(() => {
-    const activeFilterExists = ['all', 't1', 't2', 'sl', 'profitable', 'losing', 'near-t1', 'near-t2', 'near-sl'].includes(filterBy) || uniqueTags.includes(filterBy) || uniqueSectors.includes(filterBy);
+    const activeFilterExists = ['all', 't1', 't2', 'sl', 'profitable', 'losing', 'near-t1', 'near-t2', 'near-sl', 'up-50', 'up-100'].includes(filterBy) || uniqueTags.includes(filterBy);
     if (watchlist.length > 0 && !activeFilterExists) {
       setFilterBy('all');
     }
-  }, [watchlist, uniqueTags.join(','), uniqueSectors.join(','), filterBy]);
+  }, [watchlist, uniqueTags.join(','), filterBy]);
 
   // Click outside options menu to close it
   useEffect(() => {
@@ -171,8 +222,7 @@ export default function App() {
           target1: target1 ? parseFloat(target1) : null,
           target2: target2 ? parseFloat(target2) : null,
           stopLoss: stopLoss ? parseFloat(stopLoss) : null,
-          tag: tag ? tag.trim() : null,
-          sector: data.sector || null
+          tag: tag ? tag.trim() : null
         })
       });
 
@@ -187,8 +237,7 @@ export default function App() {
         ...dbStock,
         currentPrice: data.price,
         changePercent: data.changePercent,
-        change: data.change,
-        sector: data.sector || dbStock.sector
+        change: data.change
       };
 
       setWatchlist(prev => [...prev, newStock]);
@@ -219,6 +268,75 @@ export default function App() {
       setWatchlist(prev => prev.filter(item => item.symbol !== symbol));
     } catch (err) {
       alert(err.message || 'Error removing stock');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSellClick = (stock) => {
+    setExpandedSymbol(null);
+    setSellStockItem(stock);
+    setSellPrice(stock.currentPrice !== null && stock.currentPrice !== undefined ? stock.currentPrice.toString() : '');
+    setSellDate(new Date().toISOString().split('T')[0]);
+    setErrorMsg('');
+    setShowSellModal(true);
+  };
+
+  const handleSellSubmit = async (e) => {
+    e.preventDefault();
+    if (!sellPrice) {
+      setErrorMsg('Please enter a sell price');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const soldResponse = await fetch(`${API_BASE}/sold`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: sellStockItem.symbol,
+          name: sellStockItem.name,
+          buyPrice: sellStockItem.buyPrice,
+          sellPrice: parseFloat(sellPrice),
+          sellDate: sellDate,
+          tag: sellStockItem.tag
+        })
+      });
+      if (!soldResponse.ok) {
+        throw new Error('Failed to record sold transaction');
+      }
+      const soldStock = await soldResponse.json();
+
+      const deleteResponse = await fetch(`${API_BASE}/watchlist/${encodeURIComponent(sellStockItem.symbol)}`, {
+        method: 'DELETE'
+      });
+      if (!deleteResponse.ok) {
+        throw new Error('Failed to remove from active watchlist');
+      }
+
+      setWatchlist(prev => prev.filter(item => item.symbol !== sellStockItem.symbol));
+      setSellHistory(prev => [soldStock, ...prev]);
+      setShowSellModal(false);
+      setSellStockItem(null);
+    } catch (err) {
+      setErrorMsg(err.message || 'Error processing sell entry');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveSoldEntry = async (id) => {
+    if (!confirm('Are you sure you want to delete this sold record from history?')) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/sold/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Failed to delete history record');
+      setSellHistory(prev => prev.filter(item => item.id !== id));
+    } catch (err) {
+      alert(err.message || 'Error removing history record');
     } finally {
       setLoading(false);
     }
@@ -314,17 +432,18 @@ export default function App() {
   }, [searchSymbol, shouldSearch]);
 
   const exportWatchlist = () => {
-    if (watchlist.length === 0) {
-      alert("Watchlist is empty. Add some stocks first before exporting.");
-      return;
-    }
-    const cleanWatchlist = watchlist.map(({ symbol, name, buyPrice, target1, target2, stopLoss, tag, sector }) => ({
-      symbol, name, buyPrice, target1, target2, stopLoss, tag, sector
-    }));
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanWatchlist, null, 2));
+    const backupData = {
+      watchlist: watchlist.map(({ symbol, name, buyPrice, target1, target2, stopLoss, tag }) => ({
+        symbol, name, buyPrice, target1, target2, stopLoss, tag
+      })),
+      sellHistory: sellHistory.map(({ symbol, name, buyPrice, sellPrice, sellDate, tag }) => ({
+        symbol, name, buyPrice, sellPrice, sellDate, tag
+      }))
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", "stock_watchlist.json");
+    downloadAnchor.setAttribute("download", "stock_tracker_backup.json");
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -339,53 +458,95 @@ export default function App() {
     fileReader.onload = async (event) => {
       try {
         const parsed = JSON.parse(event.target.result);
+        let watchlistArray = [];
+        let sellHistoryArray = [];
+
         if (Array.isArray(parsed)) {
-          setLoading(true);
-          let importCount = 0;
-          for (const newItem of parsed) {
-            let sym = newItem.symbol ? newItem.symbol.trim().toUpperCase() : '';
-            if (sym) {
-              if (!sym.endsWith('.NS') && !sym.endsWith('.BO')) {
-                sym = `${sym}.NS`;
-              }
-              if (!watchlist.some(item => item.symbol.toUpperCase() === sym)) {
-                try {
-                  await fetch(`${API_BASE}/watchlist`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      symbol: sym,
-                      name: newItem.name || '',
-                      buyPrice: newItem.buyPrice ? parseFloat(newItem.buyPrice) : null,
-                      target1: newItem.target1 ? parseFloat(newItem.target1) : null,
-                      target2: newItem.target2 ? parseFloat(newItem.target2) : null,
-                      stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null,
-                      tag: newItem.tag || '',
-                      sector: newItem.sector || ''
-                    })
-                  });
-                  importCount++;
-                } catch (e) {
-                  console.error("Failed to import symbol", sym, e);
-                }
-              }
-            }
-          }
-          
-          // Refresh list from DB
-          const response = await fetch(`${API_BASE}/watchlist`);
-          if (response.ok) {
-            const list = await response.json();
-            setWatchlist(list);
-            if (list.length > 0) {
-              await fetchPricesForList(list);
-            }
-          }
-          
-          alert(`Watchlist imported: ${importCount} new stocks added successfully!`);
+          watchlistArray = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          watchlistArray = parsed.watchlist || [];
+          sellHistoryArray = parsed.sellHistory || [];
         } else {
-          alert("Invalid file format. Expected a JSON array.");
+          alert("Invalid file format.");
+          return;
         }
+
+        setLoading(true);
+        let importCount = 0;
+        let soldImportCount = 0;
+
+        // 1. Import watchlist items
+        for (const newItem of watchlistArray) {
+          let sym = newItem.symbol ? newItem.symbol.trim().toUpperCase() : '';
+          if (sym) {
+            if (!sym.endsWith('.NS') && !sym.endsWith('.BO')) {
+              sym = `${sym}.NS`;
+            }
+            if (!watchlist.some(item => item.symbol.toUpperCase() === sym)) {
+              try {
+                await fetch(`${API_BASE}/watchlist`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    symbol: sym,
+                    name: newItem.name || '',
+                    buyPrice: newItem.buyPrice ? parseFloat(newItem.buyPrice) : null,
+                    target1: newItem.target1 ? parseFloat(newItem.target1) : null,
+                    target2: newItem.target2 ? parseFloat(newItem.target2) : null,
+                    stopLoss: newItem.stopLoss ? parseFloat(newItem.stopLoss) : null,
+                    tag: newItem.tag || ''
+                  })
+                });
+                importCount++;
+              } catch (e) {
+                console.error("Failed to import symbol", sym, e);
+              }
+            }
+          }
+        }
+
+        // 2. Import sold history items
+        for (const newItem of sellHistoryArray) {
+          let sym = newItem.symbol ? newItem.symbol.trim().toUpperCase() : '';
+          if (sym) {
+            try {
+              await fetch(`${API_BASE}/sold`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  symbol: sym,
+                  name: newItem.name || '',
+                  buyPrice: newItem.buyPrice ? parseFloat(newItem.buyPrice) : null,
+                  sellPrice: newItem.sellPrice ? parseFloat(newItem.sellPrice) : null,
+                  sellDate: newItem.sellDate || '',
+                  tag: newItem.tag || ''
+                })
+              });
+              soldImportCount++;
+            } catch (e) {
+              console.error("Failed to import sold record", sym, e);
+            }
+          }
+        }
+        
+        // Refresh watchlist from DB
+        const response = await fetch(`${API_BASE}/watchlist`);
+        if (response.ok) {
+          const list = await response.json();
+          setWatchlist(list);
+          if (list.length > 0) {
+            await fetchPricesForList(list);
+          }
+        }
+
+        // Refresh sold history from DB
+        const soldResponse = await fetch(`${API_BASE}/sold`);
+        if (soldResponse.ok) {
+          const list = await soldResponse.json();
+          setSellHistory(list);
+        }
+        
+        alert(`Import complete: Added ${importCount} watchlist stocks & ${soldImportCount} sold history logs.`);
       } catch (err) {
         alert("Failed to parse JSON file.");
       } finally {
@@ -448,10 +609,12 @@ export default function App() {
       ));
     } else if (filterBy === 'near-sl') {
       list = list.filter(stock => stock.stopLoss && stock.currentPrice && stock.currentPrice > stock.stopLoss && stock.currentPrice <= stock.stopLoss * 1.02);
+    } else if (filterBy === 'up-50') {
+      list = list.filter(stock => stock.buyPrice && stock.currentPrice && ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) >= 0.5);
+    } else if (filterBy === 'up-100') {
+      list = list.filter(stock => stock.buyPrice && stock.currentPrice && ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) >= 1.0);
     } else if (uniqueTags.includes(filterBy)) {
       list = list.filter(stock => stock.tag === filterBy);
-    } else if (uniqueSectors.includes(filterBy)) {
-      list = list.filter(stock => stock.sector === filterBy);
     }
 
     // 2. Sorting
@@ -568,259 +731,395 @@ export default function App() {
         </div>
       </header>
 
-      {/* Summary statistics */}
-      <section className="overall-stats">
-        <div 
-          className={`stat-card ${filterBy === 'all' ? 'active-all' : ''}`}
-          onClick={() => setFilterBy('all')}
-        >
-          <div className="stat-card-info">
-            <p>Total Tracked</p>
-            <h3>{totalStocks}</h3>
-          </div>
-          <span className="stat-icon">📊</span>
-        </div>
-        <div 
-          className={`stat-card ${filterBy === 'profitable' ? 'active-profitable' : ''}`}
-          onClick={() => setFilterBy('profitable')}
-        >
-          <div className="stat-card-info">
-            <p>Profitable Positions</p>
-            <h3 style={{ color: 'var(--gain)' }}>{profitableStocks}</h3>
-          </div>
-          <span className="stat-icon">🟢</span>
-        </div>
-        <div 
-          className={`stat-card ${filterBy === 'losing' ? 'active-losing' : ''}`}
-          onClick={() => setFilterBy('losing')}
-        >
-          <div className="stat-card-info">
-            <p>Negative Positions</p>
-            <h3 style={{ color: 'var(--loss)' }}>{losingStocks}</h3>
-          </div>
-          <span className="stat-icon">🔴</span>
-        </div>
-      </section>
-
-      {/* Watchlist Search Bar */}
-      {watchlist.length > 0 && (
-        <div className="watchlist-search-container">
-          <svg className="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input
-            type="text"
-            className="watchlist-search-input"
-            placeholder="Search watchlist by name or symbol..."
-            value={watchlistSearch}
-            onChange={(e) => setWatchlistSearch(e.target.value)}
-          />
-          {watchlistSearch && (
-            <button className="search-clear-btn" onClick={() => setWatchlistSearch('')} title="Clear Search">
-              ×
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Filter Tabs / Pills */}
-      {watchlist.length > 0 && (
-        <div className="filter-tabs-bar">
+      {/* Dashboard View Switcher */}
+      <div className="dashboard-view-switcher-container">
+        <div className="dashboard-view-tabs">
           <button 
-            className={`filter-pill ${filterBy === 'all' ? 'active' : ''}`}
+            className={`dashboard-view-tab ${dashboardView === 'watchlist' ? 'active' : ''}`}
+            onClick={() => setDashboardView('watchlist')}
+          >
+            📊 Active Watchlist ({watchlist.length})
+          </button>
+          <button 
+            className={`dashboard-view-tab ${dashboardView === 'sold' ? 'active' : ''}`}
+            onClick={() => setDashboardView('sold')}
+          >
+            💰 Sell History ({sellHistory.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Summary statistics / Realized Stats */}
+      {dashboardView === 'watchlist' ? (
+        <section className="overall-stats">
+          <div 
+            className={`stat-card ${filterBy === 'all' ? 'active-all' : ''}`}
             onClick={() => setFilterBy('all')}
           >
-            All ({watchlist.length})
-          </button>
-          <button 
-            className={`filter-pill ${filterBy === 'near-sl' ? 'active' : ''}`}
-            onClick={() => setFilterBy('near-sl')}
+            <div className="stat-card-info">
+              <p>Total Tracked</p>
+              <h3>{totalStocks}</h3>
+            </div>
+            <span className="stat-icon">📊</span>
+          </div>
+          <div 
+            className={`stat-card ${filterBy === 'profitable' ? 'active-profitable' : ''}`}
+            onClick={() => setFilterBy('profitable')}
           >
-            Near SL ({watchlist.filter(s => s.stopLoss && s.currentPrice && s.currentPrice > s.stopLoss && s.currentPrice <= s.stopLoss * 1.02).length})
-          </button>
-          <button 
-            className={`filter-pill ${filterBy === 'sl' ? 'active' : ''}`}
-            onClick={() => setFilterBy('sl')}
+            <div className="stat-card-info">
+              <p>Profitable Positions</p>
+              <h3 style={{ color: 'var(--gain)' }}>{profitableStocks}</h3>
+            </div>
+            <span className="stat-icon">🟢</span>
+          </div>
+          <div 
+            className={`stat-card ${filterBy === 'losing' ? 'active-losing' : ''}`}
+            onClick={() => setFilterBy('losing')}
           >
-            SL ({watchlist.filter(s => s.stopLoss && s.currentPrice <= s.stopLoss).length})
-          </button>
-          <button 
-            className={`filter-pill ${filterBy === 'near-t1' ? 'active' : ''}`}
-            onClick={() => setFilterBy('near-t1')}
-          >
-            Near T1 ({watchlist.filter(s => s.target1 && s.currentPrice && (
-              s.buyPrice 
-                ? (s.currentPrice < s.target1 && s.currentPrice >= s.target1 - (s.target1 - s.buyPrice) * 0.2)
-                : (s.currentPrice < s.target1 && s.currentPrice >= s.target1 * 0.98)
-            )).length})
-          </button>
-          <button 
-            className={`filter-pill ${filterBy === 't1' ? 'active' : ''}`}
-            onClick={() => setFilterBy('t1')}
-          >
-            T1 ({watchlist.filter(s => s.target1 && s.currentPrice >= s.target1).length})
-          </button>
-          <button 
-            className={`filter-pill ${filterBy === 'near-t2' ? 'active' : ''}`}
-            onClick={() => setFilterBy('near-t2')}
-          >
-            Near T2 ({watchlist.filter(s => s.target2 && s.currentPrice && (
-              s.target1 
-                ? (s.currentPrice < s.target2 && s.currentPrice >= s.target2 - (s.target2 - s.target1) * 0.4)
-                : (s.currentPrice < s.target2 && s.currentPrice >= s.target2 * 0.98)
-            )).length})
-          </button>
-          <button 
-            className={`filter-pill ${filterBy === 't2' ? 'active' : ''}`}
-            onClick={() => setFilterBy('t2')}
-          >
-            T2 ({watchlist.filter(s => s.target2 && s.currentPrice >= s.target2).length})
-          </button>
-          
-          {uniqueTags.map(tagName => (
-            <button 
-              key={tagName}
-              className={`filter-pill ${filterBy === tagName ? 'active' : ''}`}
-              onClick={() => setFilterBy(tagName)}
-            >
-              {tagName} ({watchlist.filter(s => s.tag === tagName).length})
-            </button>
-          ))}
-
-          {uniqueSectors.map(sectorName => (
-            <button 
-              key={sectorName}
-              className={`filter-pill sector-pill-btn ${filterBy === sectorName ? 'active' : ''}`}
-              onClick={() => setFilterBy(sectorName)}
-            >
-              📁 {sectorName} ({watchlist.filter(s => s.sector === sectorName).length})
-            </button>
-          ))}
-        </div>
+            <div className="stat-card-info">
+              <p>Negative Positions</p>
+              <h3 style={{ color: 'var(--loss)' }}>{losingStocks}</h3>
+            </div>
+            <span className="stat-icon">🔴</span>
+          </div>
+        </section>
+      ) : (
+        <section className="overall-stats">
+          <div className="stat-card active-all">
+            <div className="stat-card-info">
+              <p>Realized P&L (%)</p>
+              <h3 style={{ color: realizedStats.totalPnlPct >= 0 ? 'var(--gain)' : 'var(--loss)' }}>
+                {realizedStats.totalPnlPct >= 0 ? '+' : ''}{realizedStats.totalPnlPct.toFixed(2)}%
+              </h3>
+            </div>
+            <span className="stat-icon">💰</span>
+          </div>
+          <div className="stat-card active-profitable">
+            <div className="stat-card-info">
+              <p>Win Rate</p>
+              <h3 style={{ color: 'var(--gain)' }}>
+                {realizedStats.profitCount} / {sellHistory.length} ({realizedStats.profitRate.toFixed(0)}%)
+              </h3>
+            </div>
+            <span className="stat-icon">🏆</span>
+          </div>
+          <div className="stat-card active-losing">
+            <div className="stat-card-info">
+              <p>Average Gain</p>
+              <h3 style={{ color: realizedStats.avgPct >= 0 ? 'var(--gain)' : 'var(--loss)' }}>
+                {realizedStats.avgPct >= 0 ? '+' : ''}{realizedStats.avgPct.toFixed(2)}%
+              </h3>
+            </div>
+            <span className="stat-icon">📈</span>
+          </div>
+        </section>
       )}
 
-      {/* List of stock rows */}
-      {isInitialLoad ? (
-        <div className="watchlist-list skeleton-container">
-          {[1, 2, 3].map((i) => (
-            <div className="skeleton-row" key={i}>
-              <div className="skeleton-top">
-                <div className="skeleton-bar skeleton-sym"></div>
-                <div className="skeleton-bar skeleton-price"></div>
-              </div>
-              <div className="skeleton-bottom">
-                <div className="skeleton-bar skeleton-buy"></div>
-                <div className="skeleton-targets">
-                  <div className="skeleton-bar skeleton-tag"></div>
-                  <div className="skeleton-bar skeleton-tag"></div>
-                  <div className="skeleton-bar skeleton-tag"></div>
-                </div>
-              </div>
+      {dashboardView === 'watchlist' ? (
+        <>
+          {/* Watchlist Search Bar */}
+          {watchlist.length > 0 && (
+            <div className="watchlist-search-container">
+              <svg className="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input
+                type="text"
+                className="watchlist-search-input"
+                placeholder="Search watchlist by name or symbol..."
+                value={watchlistSearch}
+                onChange={(e) => setWatchlistSearch(e.target.value)}
+              />
+              {watchlistSearch && (
+                <button className="search-clear-btn" onClick={() => setWatchlistSearch('')} title="Clear Search">
+                  ×
+                </button>
+              )}
             </div>
-          ))}
-        </div>
-      ) : watchlist.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
-          <h3 style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Your watchlist is empty</h3>
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>Add your first stock</button>
-        </div>
-      ) : processedWatchlist.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
-          <h3 style={{ color: 'var(--text-muted)' }}>No stocks match the selected filter</h3>
-        </div>
-      ) : (
-        <div className="watchlist-list" key={filterBy}>
-          {processedWatchlist.map((stock) => {
-            const pctChangeFromBuy = (stock.buyPrice && stock.currentPrice)
-              ? ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) * 100
-              : null;
-            const absPnl = (stock.buyPrice && stock.currentPrice)
-              ? stock.currentPrice - stock.buyPrice
-              : null;
+          )}
 
-            const isTarget1Hit = stock.target1 && stock.currentPrice >= stock.target1;
-            const isTarget2Hit = stock.target2 && stock.currentPrice >= stock.target2;
-            const isStopLossHit = stock.stopLoss && stock.currentPrice <= stock.stopLoss;
-            const isExpanded = expandedSymbol === stock.symbol;
+          {/* Filter Tabs / Pills */}
+          {watchlist.length > 0 && (
+            <div className="filter-tabs-bar">
+              <button 
+                className={`filter-pill ${filterBy === 'all' ? 'active' : ''}`}
+                onClick={() => setFilterBy('all')}
+              >
+                All ({watchlist.length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 'near-sl' ? 'active' : ''}`}
+                onClick={() => setFilterBy('near-sl')}
+              >
+                Near SL ({watchlist.filter(s => s.stopLoss && s.currentPrice && s.currentPrice > s.stopLoss && s.currentPrice <= s.stopLoss * 1.02).length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 'sl' ? 'active' : ''}`}
+                onClick={() => setFilterBy('sl')}
+              >
+                SL ({watchlist.filter(s => s.stopLoss && s.currentPrice <= s.stopLoss).length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 'near-t1' ? 'active' : ''}`}
+                onClick={() => setFilterBy('near-t1')}
+              >
+                Near T1 ({watchlist.filter(s => s.target1 && s.currentPrice && (
+                  s.buyPrice 
+                    ? (s.currentPrice < s.target1 && s.currentPrice >= s.target1 - (s.target1 - s.buyPrice) * 0.2)
+                    : (s.currentPrice < s.target1 && s.currentPrice >= s.target1 * 0.98)
+                )).length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 't1' ? 'active' : ''}`}
+                onClick={() => setFilterBy('t1')}
+              >
+                T1 ({watchlist.filter(s => s.target1 && s.currentPrice >= s.target1).length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 'near-t2' ? 'active' : ''}`}
+                onClick={() => setFilterBy('near-t2')}
+              >
+                Near T2 ({watchlist.filter(s => s.target2 && s.currentPrice && (
+                  s.target1 
+                    ? (s.currentPrice < s.target2 && s.currentPrice >= s.target2 - (s.target2 - s.target1) * 0.4)
+                    : (s.currentPrice < s.target2 && s.currentPrice >= s.target2 * 0.98)
+                )).length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 't2' ? 'active' : ''}`}
+                onClick={() => setFilterBy('t2')}
+              >
+                T2 ({watchlist.filter(s => s.target2 && s.currentPrice >= s.target2).length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 'up-50' ? 'active' : ''}`}
+                onClick={() => setFilterBy('up-50')}
+              >
+                🚀 50%+ ({watchlist.filter(s => s.buyPrice && s.currentPrice && ((s.currentPrice - s.buyPrice) / s.buyPrice) >= 0.5).length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 'up-100' ? 'active' : ''}`}
+                onClick={() => setFilterBy('up-100')}
+              >
+                🦄 100%+ ({watchlist.filter(s => s.buyPrice && s.currentPrice && ((s.currentPrice - s.buyPrice) / s.buyPrice) >= 1.0).length})
+              </button>
+              
+              {uniqueTags.map(tagName => (
+                <button 
+                  key={tagName}
+                  className={`filter-pill ${filterBy === tagName ? 'active' : ''}`}
+                  onClick={() => setFilterBy(tagName)}
+                >
+                  {tagName} ({watchlist.filter(s => s.tag === tagName).length})
+                </button>
+              ))}
+            </div>
+          )}
 
-            return (
-              <div className="stock-row" key={stock.symbol}>
-                <div className="stock-row-main" onClick={() => setExpandedSymbol(isExpanded ? null : stock.symbol)}>
-                  {/* Top Row: Ticker Info & Market Price */}
-                  <div className="stock-row-top">
-                    <div className="stock-row-left-group">
-                      <div className="sym-container">
-                        <span className="sym">{stock.symbol.split('.')[0]}</span>
-                        <span className="exchange-badge">{stock.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}</span>
-                        {stock.tag && <span className="tag-badge">{stock.tag}</span>}
-                        {stock.sector && <span className="sector-badge">{stock.sector}</span>}
-                      </div>
-                      <div className="name" title={stock.name}>{stock.name}</div>
-                    </div>
-
-                    <div className="stock-row-right-group">
-                      <span className="price">₹{stock.currentPrice?.toFixed(2) || 'N/A'}</span>
-                      {pctChangeFromBuy !== null ? (
-                        <span className={`returns ${pctChangeFromBuy >= 0 ? 'up' : 'down'}`}>
-                          {pctChangeFromBuy >= 0 ? '▲' : '▼'} {Math.abs(pctChangeFromBuy).toFixed(2)}%
-                        </span>
-                      ) : stock.changePercent !== undefined ? (
-                        <span className={`returns ${stock.change >= 0 ? 'up' : 'down'}`}>
-                          {stock.change >= 0 ? '▲' : '▼'} {Math.abs(stock.changePercent).toFixed(2)}%
-                        </span>
-                      ) : null}
+          {/* List of stock rows */}
+          {isInitialLoad ? (
+            <div className="watchlist-list skeleton-container">
+              {[1, 2, 3].map((i) => (
+                <div className="skeleton-row" key={i}>
+                  <div className="skeleton-top">
+                    <div className="skeleton-bar skeleton-sym"></div>
+                    <div className="skeleton-bar skeleton-price"></div>
+                  </div>
+                  <div className="skeleton-bottom">
+                    <div className="skeleton-bar skeleton-buy"></div>
+                    <div className="skeleton-targets">
+                      <div className="skeleton-bar skeleton-tag"></div>
+                      <div className="skeleton-bar skeleton-tag"></div>
+                      <div className="skeleton-bar skeleton-tag"></div>
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          ) : watchlist.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Your watchlist is empty</h3>
+              <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>Add your first stock</button>
+            </div>
+          ) : processedWatchlist.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ color: 'var(--text-muted)' }}>No stocks match the selected filter</h3>
+            </div>
+          ) : (
+            <div className="watchlist-list" key={filterBy}>
+              {processedWatchlist.map((stock) => {
+                const pctChangeFromBuy = (stock.buyPrice && stock.currentPrice)
+                  ? ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) * 100
+                  : null;
+                const absPnl = (stock.buyPrice && stock.currentPrice)
+                  ? stock.currentPrice - stock.buyPrice
+                  : null;
 
-                  {/* Bottom Row: Buy Details, P&L, and Targets */}
-                  {(stock.buyPrice || stock.target1 || stock.target2 || stock.stopLoss) && (
+                const isTarget1Hit = stock.target1 && stock.currentPrice >= stock.target1;
+                const isTarget2Hit = stock.target2 && stock.currentPrice >= stock.target2;
+                const isStopLossHit = stock.stopLoss && stock.currentPrice <= stock.stopLoss;
+                const isExpanded = expandedSymbol === stock.symbol;
+
+                return (
+                  <div className="stock-row" key={stock.symbol}>
+                    <div className="stock-row-main" onClick={() => setExpandedSymbol(isExpanded ? null : stock.symbol)}>
+                      {/* Top Row: Ticker Info & Market Price */}
+                      <div className="stock-row-top">
+                        <div className="stock-row-left-group">
+                          <div className="sym-container">
+                            <span className="sym">{stock.symbol.split('.')[0]}</span>
+                            <span className="exchange-badge">{stock.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}</span>
+                            {stock.tag && <span className="tag-badge">{stock.tag}</span>}
+                          </div>
+                          <div className="name" title={stock.name}>{stock.name}</div>
+                        </div>
+
+                        <div className="stock-row-right-group">
+                          <span className="price">₹{stock.currentPrice?.toFixed(2) || 'N/A'}</span>
+                          {pctChangeFromBuy !== null ? (
+                            <span className={`returns ${pctChangeFromBuy >= 0 ? 'up' : 'down'}`}>
+                              {pctChangeFromBuy >= 0 ? '▲' : '▼'} {Math.abs(pctChangeFromBuy).toFixed(2)}%
+                            </span>
+                          ) : stock.changePercent !== undefined ? (
+                            <span className={`returns ${stock.change >= 0 ? 'up' : 'down'}`}>
+                              {stock.change >= 0 ? '▲' : '▼'} {Math.abs(stock.changePercent).toFixed(2)}%
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Buy Details, P&L, and Targets */}
+                      {(stock.buyPrice || stock.target1 || stock.target2 || stock.stopLoss) && (
+                        <div className="stock-row-bottom">
+                          <div className="buy-info">
+                            {stock.buyPrice && (
+                              <>
+                                <span className="buy-val">Buy: ₹{stock.buyPrice.toFixed(2)}</span>
+                                {stock.changePercent !== undefined && stock.change !== undefined && (
+                                  <span className="pnl-val">
+                                    P&L: <span style={{ color: stock.change >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
+                                      {stock.change >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}% ({stock.change >= 0 ? '+' : ''}₹{stock.change.toFixed(2)})
+                                    </span>
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+
+                          <div className="target-info">
+                            <span className={`target-tag ${isTarget1Hit ? 'hit' : ''}`}>
+                              T1: {stock.target1 ? `₹${stock.target1.toFixed(2)}` : '—'}
+                            </span>
+                            <span className={`target-tag ${isTarget2Hit ? 'hit' : ''}`}>
+                              T2: {stock.target2 ? `₹${stock.target2.toFixed(2)}` : '—'}
+                            </span>
+                            <span className={`target-tag ${isStopLossHit ? 'sl-hit' : ''}`}>
+                              SL: {stock.stopLoss ? `₹${stock.stopLoss.toFixed(2)}` : '—'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {isExpanded && (
+                      <div className="stock-row-expanded">
+                        <div className="expanded-actions" style={{ margin: '0 0 0 auto', display: 'flex', gap: '0.5rem' }}>
+                          <button className="btn btn-success" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleSellClick(stock)}>
+                            Sell Position
+                          </button>
+                          <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleEditClick(stock)}>
+                            Edit
+                          </button>
+                          <button className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleRemoveStock(stock.symbol)}>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      ) : (
+        /* Sell History View */
+        <div className="watchlist-list" key="sold-list">
+          {sellHistory.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '1rem' }}>🪙</span>
+              <h3 style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>No sold stock history found</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Keep track of your realized gains by selling positions from your active watchlist.</p>
+            </div>
+          ) : (
+            sellHistory.map((item) => {
+              const pnl = (item.buyPrice && item.sellPrice) ? item.sellPrice - item.buyPrice : null;
+              const pct = (item.buyPrice && item.sellPrice) ? (pnl / item.buyPrice) * 100 : null;
+              const isExpanded = expandedSymbol === item.id;
+
+              return (
+                <div className="stock-row" key={item.id} style={{ opacity: 0.95, borderLeft: `3px solid ${pnl >= 0 ? 'var(--gain)' : 'var(--loss)'}` }}>
+                  <div className="stock-row-main" onClick={() => setExpandedSymbol(isExpanded ? null : item.id)}>
+                    <div className="stock-row-top">
+                      <div className="stock-row-left-group">
+                        <div className="sym-container">
+                          <span className="sym">{item.symbol.split('.')[0]}</span>
+                          <span className="exchange-badge">{item.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}</span>
+                          {item.tag && <span className="tag-badge">{item.tag}</span>}
+                          <span className="exchange-badge" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)' }}>SOLD</span>
+                        </div>
+                        <div className="name" title={item.name}>{item.name}</div>
+                      </div>
+                      <div className="stock-row-right-group">
+                        <span className="price">₹{item.sellPrice?.toFixed(2) || 'N/A'}</span>
+                        {pct !== null ? (
+                          <span className={`returns ${pnl >= 0 ? 'up' : 'down'}`}>
+                            {pnl >= 0 ? '▲' : '▼'} {Math.abs(pct).toFixed(2)}%
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
                     <div className="stock-row-bottom">
                       <div className="buy-info">
-                        {stock.buyPrice && (
+                        {item.buyPrice && (
                           <>
-                            <span className="buy-val">Buy: ₹{stock.buyPrice.toFixed(2)}</span>
-                            {stock.changePercent !== undefined && stock.change !== undefined && (
+                            <span className="buy-val">Buy: ₹{item.buyPrice.toFixed(2)}</span>
+                            {pnl !== null && (
                               <span className="pnl-val">
-                                P&L: <span style={{ color: stock.change >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
-                                  {stock.change >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}% ({stock.change >= 0 ? '+' : ''}₹{stock.change.toFixed(2)})
+                                Realized P&L:{' '}
+                                <span style={{ color: pnl >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 600 }}>
+                                  {pnl >= 0 ? '+' : ''}₹{pnl.toFixed(2)}
                                 </span>
                               </span>
                             )}
                           </>
                         )}
                       </div>
-
                       <div className="target-info">
-                        <span className={`target-tag ${isTarget1Hit ? 'hit' : ''}`}>
-                          T1: {stock.target1 ? `₹${stock.target1.toFixed(2)}` : '—'}
+                        <span className="target-tag" style={{ background: 'rgba(255, 255, 255, 0.03)', color: 'var(--text-muted)' }}>
+                          Sold on: {item.sellDate}
                         </span>
-                        <span className={`target-tag ${isTarget2Hit ? 'hit' : ''}`}>
-                          T2: {stock.target2 ? `₹${stock.target2.toFixed(2)}` : '—'}
-                        </span>
-                        <span className={`target-tag ${isStopLossHit ? 'sl-hit' : ''}`}>
-                          SL: {stock.stopLoss ? `₹${stock.stopLoss.toFixed(2)}` : '—'}
-                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="stock-row-expanded">
+                      <div className="expanded-actions" style={{ margin: '0 0 0 auto' }}>
+                        <button 
+                          className="btn btn-danger" 
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} 
+                          onClick={() => handleRemoveSoldEntry(item.id)}
+                        >
+                          Delete Record
+                        </button>
                       </div>
                     </div>
                   )}
                 </div>
-
-                {isExpanded && (
-                  <div className="stock-row-expanded">
-                    <div className="expanded-actions" style={{ margin: '0 0 0 auto' }}>
-                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleEditClick(stock)}>
-                        Edit
-                      </button>
-                      <button className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => handleRemoveStock(stock.symbol)}>
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       )}
 
@@ -1056,6 +1355,85 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Sell Stock Modal */}
+      {showSellModal && sellStockItem && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2 className="modal-title">Record Sell Entry</h2>
+            <form onSubmit={handleSellSubmit}>
+              <div className="form-group">
+                <label>Symbol / Ticker</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={sellStockItem.symbol}
+                  disabled
+                />
+              </div>
+              <div className="form-group">
+                <label>Company Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={sellStockItem.name}
+                  disabled
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+                <div className="form-group">
+                  <label>Buy Price (₹)</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={sellStockItem.buyPrice ? `₹${sellStockItem.buyPrice.toFixed(2)}` : '—'}
+                    disabled
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Sell Price (₹)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    className="form-control"
+                    placeholder="e.g. 1320.50"
+                    value={sellPrice}
+                    onChange={(e) => setSellPrice(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Sell Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={sellDate}
+                  onChange={(e) => setSellDate(e.target.value)}
+                  required
+                />
+              </div>
+
+              {errorMsg && (
+                <div style={{ color: 'var(--loss)', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 600 }}>
+                  ⚠️ {errorMsg}
+                </div>
+              )}
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => { setShowSellModal(false); setSellStockItem(null); setErrorMsg(''); }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-success" disabled={loading} style={{ background: 'var(--gain)', color: '#fff' }}>
+                  {loading ? 'Recording...' : 'Record Sell'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Bottom Sheet Sort Modal */}
       {showFilterModal && (
         <div className="sheet-overlay" onClick={() => setShowFilterModal(false)}>
