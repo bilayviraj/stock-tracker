@@ -159,7 +159,7 @@ export default function App() {
 
   // Auto-reset filter if active tag filter is deleted/removed
   useEffect(() => {
-    const activeFilterExists = ['all', 't1', 't2', 'sl', 'profitable', 'losing', 'near-t1', 'near-t2', 'near-sl', 'up-50', 'up-100'].includes(filterBy) || uniqueTags.includes(filterBy);
+    const activeFilterExists = ['all', 't1', 't2', 'sl', 'profitable', 'losing', 'near-t1', 'near-t2', 'near-sl', 'up-50', 'up-100', 'down-10', 'down-20'].includes(filterBy) || uniqueTags.includes(filterBy);
     if (watchlist.length > 0 && !activeFilterExists) {
       setFilterBy('all');
     }
@@ -613,6 +613,10 @@ export default function App() {
       list = list.filter(stock => stock.buyPrice && stock.currentPrice && ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) >= 0.5);
     } else if (filterBy === 'up-100') {
       list = list.filter(stock => stock.buyPrice && stock.currentPrice && ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) >= 1.0);
+    } else if (filterBy === 'down-10') {
+      list = list.filter(stock => stock.buyPrice && stock.currentPrice && ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) <= -0.10);
+    } else if (filterBy === 'down-20') {
+      list = list.filter(stock => stock.buyPrice && stock.currentPrice && ((stock.currentPrice - stock.buyPrice) / stock.buyPrice) <= -0.20);
     } else if (uniqueTags.includes(filterBy)) {
       list = list.filter(stock => stock.tag === filterBy);
     }
@@ -903,6 +907,18 @@ export default function App() {
                 onClick={() => setFilterBy('up-100')}
               >
                 🦄 100%+ ({watchlist.filter(s => s.buyPrice && s.currentPrice && ((s.currentPrice - s.buyPrice) / s.buyPrice) >= 1.0).length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 'down-10' ? 'active' : ''}`}
+                onClick={() => setFilterBy('down-10')}
+              >
+                ⚠️ -10% ({watchlist.filter(s => s.buyPrice && s.currentPrice && ((s.currentPrice - s.buyPrice) / s.buyPrice) <= -0.10).length})
+              </button>
+              <button 
+                className={`filter-pill ${filterBy === 'down-20' ? 'active' : ''}`}
+                onClick={() => setFilterBy('down-20')}
+              >
+                🚨 -20% ({watchlist.filter(s => s.buyPrice && s.currentPrice && ((s.currentPrice - s.buyPrice) / s.buyPrice) <= -0.20).length})
               </button>
               
               {uniqueTags.map(tagName => (
